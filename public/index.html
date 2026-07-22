@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Solutions | Portal de Catálogos y Fichas Técnicas de Cómputo</title>
+    <meta name="description" content="Sistema empresarial de Site Solutions para vendedores, soporte y equipo técnico. Consulta de catálogos y fichas técnicas de infraestructura de cómputo.">
+    <!-- Google Fonts Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-active-role="vendedor">
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar-container">
+        <div class="navbar-content">
+            <div class="brand-logo">
+                <div class="logo-icon">⚡</div>
+                <div class="logo-text">
+                    <span class="brand-name">SITE SOLUTIONS</span>
+                    <span class="brand-sub">Enterprise Tech Portal</span>
+                </div>
+            </div>
+
+            <!-- Role Selector Tabs -->
+            <div class="role-selector-wrapper" id="role-selector">
+                <span class="role-label">Perfil Activo:</span>
+                <div class="role-buttons">
+                    <button class="role-btn active" data-role="vendedor" id="btn-role-vendedor">
+                        <span class="role-icon">💼</span> Vendedores
+                    </button>
+                    <button class="role-btn" data-role="soporte" id="btn-role-soporte">
+                        <span class="role-icon">🛠️</span> Equipo Soporte
+                    </button>
+                    <button class="role-btn" data-role="tecnico" id="btn-role-tecnico">
+                        <span class="role-icon">⚡</span> Personal Técnico
+                    </button>
+                </div>
+            </div>
+
+            <!-- DB Connection Status Pill -->
+            <div class="db-status-pill" id="db-status-badge" title="Conexión de Base de Datos Supabase">
+                <span class="status-dot online"></span>
+                <span class="status-text" id="db-status-text">Supabase Conectado</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="role-badge-banner" id="hero-role-banner">
+                <span class="badge-icon">💼</span> Vista Optimizada para Vendedores
+            </div>
+            <h1 class="hero-title">Catálogo Central de Infraestructura de Cómputo</h1>
+            <p class="hero-description" id="hero-role-description">
+                Accede a precios corporativos, disponibilidad de inventario en almacén y genera cotizaciones instantáneas para clientes enterprise.
+            </p>
+
+            <!-- Global Live Search Bar -->
+            <div class="search-bar-container">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="global-search-input" placeholder="Buscar por SKU (ej. SRV-EPIC-2U), nombre, procesador o modelo..." autocomplete="off">
+                    <button class="clear-search-btn" id="clear-search-btn" style="display:none;">✕</button>
+                </div>
+                <button class="btn-search-trigger" id="btn-trigger-search">Buscar Producto</button>
+            </div>
+
+            <!-- Quick Metrics Dashboard -->
+            <div class="hero-metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-val" id="metric-total-products">4</span>
+                    <span class="metric-lbl">Equipos en Catálogo</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-val" id="metric-stock-available">56</span>
+                    <span class="metric-lbl">Unidades en Stock</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-val">100%</span>
+                    <span class="metric-lbl">Fichas Técnicas PDF</span>
+                </div>
+                <div class="metric-card highlight">
+                    <span class="metric-val" id="metric-role-mode">Comercial</span>
+                    <span class="metric-lbl">Modo de Consulta</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Workspace Container -->
+    <main class="main-container">
+
+        <!-- Role-Specific Action Bar -->
+        <section class="role-action-banner" id="role-action-panel">
+            <!-- Dynamic Content Injected via App.js based on Active Role -->
+        </section>
+
+        <!-- Category Filters & Toolbar -->
+        <section class="catalog-toolbar">
+            <div class="toolbar-title">
+                <h2>Catálogo y Fichas Técnicas</h2>
+                <span class="results-counter" id="results-count-text">Mostrando 4 equipos</span>
+            </div>
+            
+            <div class="category-filters" id="category-filter-bar">
+                <button class="cat-chip active" data-category="Todos">Todos</button>
+                <button class="cat-chip" data-category="Servidores">🖥️ Servidores</button>
+                <button class="cat-chip" data-category="Workstations">💻 Workstations</button>
+                <button class="cat-chip" data-category="Networking">🌐 Networking</button>
+                <button class="cat-chip" data-category="Almacenamiento">💾 Almacenamiento</button>
+            </div>
+        </section>
+
+        <!-- Product Cards Grid -->
+        <section class="product-grid" id="product-grid-container">
+            <!-- Rendered dynamically by app.js -->
+        </section>
+
+        <!-- Supabase Architecture Info Section -->
+        <section class="supabase-info-card">
+            <div class="supabase-info-header">
+                <div class="supabase-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13.35 2.1a1 1 0 00-1.63 0L3.08 13.92A1 1 0 003.88 15.5h6.35l-1.92 6.4a1 1 0 001.63 1l8.64-11.82a1 1 0 00-.8-1.58h-6.35l1.92-6.4z" fill="#3ECF8E"/></svg>
+                    <h3>Integración con Node.js & Supabase Database</h3>
+                </div>
+                <button class="btn-schema-modal" id="btn-open-schema-modal">Ver Esquema SQL y Configuración API</button>
+            </div>
+            <p>
+                Este portal está sincronizado mediante Node.js con la base de datos PostgreSQL en tiempo real de **Supabase**. Permite a los administradores de Site Solutions gestionar fichas técnicas, stock por almacén y notas de soporte en vivo.
+            </p>
+        </section>
+    </main>
+
+    <!-- Ficha Técnica Modal (Technical Datasheet Modal) -->
+    <div class="modal-backdrop" id="datasheet-modal" style="display: none;">
+        <div class="modal-card">
+            <header class="modal-header">
+                <div class="modal-title-wrapper">
+                    <span class="modal-badge" id="modal-sku-badge">SKU: SRV-EPIC-2U</span>
+                    <h2 id="modal-product-title">Servidor Enterprise Rack SiteCore 2U X9</h2>
+                </div>
+                <button class="modal-close-btn" id="btn-close-datasheet-modal">✕</button>
+            </header>
+
+            <div class="modal-body">
+                <!-- Modal Tabs -->
+                <div class="modal-tabs">
+                    <button class="tab-btn active" data-tab="tab-specs">Ficha Técnica Completa</button>
+                    <button class="tab-btn" data-tab="tab-soporte">Soporte & Diagnóstico</button>
+                    <button class="tab-btn" data-tab="tab-cotizacion">Vista Comercial & Stock</button>
+                </div>
+
+                <!-- Tab 1: Detailed Specs -->
+                <div class="tab-content active" id="tab-specs">
+                    <div class="specs-hero-summary">
+                        <div class="specs-thumb">
+                            <img id="modal-img" src="/assets/enterprise_server_rack.png" alt="Hardware Shot">
+                        </div>
+                        <div class="specs-quick-facts">
+                            <div class="fact-box">
+                                <span class="fact-lbl">Procesador / CPU</span>
+                                <strong id="spec-cpu">2x AMD EPYC 9654 (192 Cores)</strong>
+                            </div>
+                            <div class="fact-box">
+                                <span class="fact-lbl">Socket de Placa</span>
+                                <strong id="spec-socket">Dual Socket SP5</strong>
+                            </div>
+                            <div class="fact-box">
+                                <span class="fact-lbl">Memoria RAM</span>
+                                <strong id="spec-ram">512 GB DDR5 ECC 4800MHz</strong>
+                            </div>
+                            <div class="fact-box">
+                                <span class="fact-lbl">Consumo Térmico (TDP)</span>
+                                <strong id="spec-tdp">800W Dual Platinum Redundant</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Especificaciones Hardware Detalladas</h3>
+                    <table class="specs-table">
+                        <tbody>
+                            <tr>
+                                <th>Almacenamiento / SSD</th>
+                                <td id="spec-storage">4x 3.84TB NVMe U.2 Enterprise SSD RAID 10</td>
+                            </tr>
+                            <tr>
+                                <th>Gráficos / iGPU</th>
+                                <td id="spec-gpu">ASPEED AST2600 BMC iGPU</td>
+                            </tr>
+                            <tr>
+                                <th>Dimensiones & Form Factor</th>
+                                <td id="spec-dims">438 x 87 x 750 mm (2U Standard Rack)</td>
+                            </tr>
+                            <tr>
+                                <th>Peso Operativo</th>
+                                <td id="spec-weight">24.5 kg</td>
+                            </tr>
+                            <tr>
+                                <th>Temperatura de Operación</th>
+                                <td id="spec-temp">10°C - 35°C</td>
+                            </tr>
+                            <tr>
+                                <th>Garantía de Fábrica</th>
+                                <td id="spec-warranty">36 Meses (Soporte On-Site 24/7)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tab 2: Support & Issue Guides -->
+                <div class="tab-content" id="tab-soporte">
+                    <div class="support-guide-box">
+                        <div class="guide-header">
+                            <span class="issue-badge critical">Incidencia Recurrente Conocida</span>
+                            <h4 id="support-issue-title">Código de error BMC LED 0xAF</h4>
+                        </div>
+                        <p class="guide-symptom"><strong>Sintoma:</strong> <span id="support-symptom">Verificar flujo de aire posterior.</span></p>
+                        <div class="guide-solution-card">
+                            <h5>Pasos de Solución Técnica:</h5>
+                            <p id="support-solution">Pasos para el equipo de soporte técnico...</p>
+                        </div>
+                        <div class="firmware-row">
+                            <span>Versión de Firmware Recomendada: <strong id="support-firmware">v4.18.9-release</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Commercial & Stock -->
+                <div class="tab-content" id="tab-cotizacion">
+                    <div class="quote-calculator">
+                        <div class="quote-row">
+                            <span>Precio Unitario Lista:</span>
+                            <strong class="price-val" id="modal-price">$4,850.00 USD</strong>
+                        </div>
+                        <div class="quote-row">
+                            <span>Ubicación de Almacén:</span>
+                            <strong id="modal-location">Almacén Central A-12</strong>
+                        </div>
+                        <div class="quote-row">
+                            <span>Stock Físico Inmediato:</span>
+                            <span class="stock-badge available" id="modal-stock">14 Unidades Disponibles</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <div class="footer-actions-left">
+                    <button class="btn-action secondary" onclick="window.print()">🖨️ Imprimir Ficha Técnica</button>
+                    <button class="btn-action secondary" id="btn-download-driver">💾 Descargar Drivers & Firmware</button>
+                </div>
+                <button class="btn-action primary" id="btn-generate-quote-modal">💼 Generar Cotización PDF</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Supabase Schema & Setup Modal -->
+    <div class="modal-backdrop" id="schema-modal" style="display: none;">
+        <div class="modal-card wide">
+            <header class="modal-header">
+                <h2>Conexión Node.js + Supabase SQL Schema</h2>
+                <button class="modal-close-btn" id="btn-close-schema-modal">✕</button>
+            </header>
+            <div class="modal-body">
+                <p>Para conectar esta aplicación a tu propio proyecto de Supabase:</p>
+                <ol class="setup-steps">
+                    <li>Crea un proyecto en <a href="https://app.supabase.com" target="_blank" rel="noopener">Supabase.com</a>.</li>
+                    <li>Abre el <strong>SQL Editor</strong> en tu consola de Supabase.</li>
+                    <li>Copia y ejecuta el contenido del archivo <code>schema.sql</code> generado en el proyecto.</li>
+                    <li>Pega tus variables <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> en el archivo <code>.env</code>.</li>
+                </ol>
+                <h4>Estado Actual del Backend Express:</h4>
+                <pre class="code-block" id="backend-status-json">Cargando estado...</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p>© 2026 Site Solutions Inc. - Sistema Interno de Catálogos y Fichas Técnicas.</p>
+            <p class="footer-subtext">Diseñado para Soporte, Ventas y Equipo Técnico | Node.js + Supabase Engine</p>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript App -->
+    <script src="js/app.js"></script>
+</body>
+</html>
