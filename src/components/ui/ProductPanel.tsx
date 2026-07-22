@@ -31,6 +31,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoriesList, setCategoriesList] = useState<string[]>(['Todos']);
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -76,8 +77,19 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const allProds = await fetchProducts('Todos');
+      const unique = new Set(allProds.map(p => p.category));
+      setCategoriesList(['Todos', ...Array.from(unique)]);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
+
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, [categoryFilter, searchQuery]);
 
   const showToast = (msg: string) => {
@@ -87,17 +99,21 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
 
   // Icon selector based on category
   const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Servidores':
-        return <Server className="w-5 h-5 text-cyan-400" />;
-      case 'Workstations':
-        return <Laptop className="w-5 h-5 text-indigo-400" />;
-      case 'Networking':
-        return <Network className="w-5 h-5 text-emerald-400" />;
-      case 'Almacenamiento':
-        return <HardDrive className="w-5 h-5 text-amber-400" />;
-      default:
-        return <Tag className="w-5 h-5 text-slate-400" />;
+    const catLower = category.toLowerCase();
+    if (catLower.includes('servidor')) {
+      return <Server className="w-5 h-5 text-cyan-400" />;
+    } else if (catLower.includes('laptop') || catLower.includes('workstation') || catLower.includes('desktop')) {
+      return <Laptop className="w-5 h-5 text-indigo-400" />;
+    } else if (catLower.includes('red') || catLower.includes('networking') || catLower.includes('switch')) {
+      return <Network className="w-5 h-5 text-emerald-400" />;
+    } else if (catLower.includes('almacenamiento') || catLower.includes('nas') || catLower.includes('disco') || catLower.includes('ssd') || catLower.includes('hdd')) {
+      return <HardDrive className="w-5 h-5 text-amber-400" />;
+    } else if (catLower.includes('procesador') || catLower.includes('tarjeta madre') || catLower.includes('ram') || catLower.includes('memoria')) {
+      return <Cpu className="w-5 h-5 text-pink-400" />;
+    } else if (catLower.includes('gráfica') || catLower.includes('grafica') || catLower.includes('video')) {
+      return <Activity className="w-5 h-5 text-purple-400" />;
+    } else {
+      return <Tag className="w-5 h-5 text-slate-400" />;
     }
   };
 
@@ -222,11 +238,11 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
             <span>Categoría:</span>
           </div>
           <div className="flex bg-slate-900 border border-slate-850 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto">
-            {['Todos', 'Servidores', 'Workstations', 'Networking', 'Almacenamiento'].map((cat) => (
+            {categoriesList.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap capitalize ${
                   categoryFilter === cat
                     ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
