@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchCatalogs, uploadCatalogFile, repairCatalogErrors, CatalogAsset } from '@/lib/supabase/client';
+import { fetchCatalogs, uploadCatalogFile, repairCatalogErrors, deleteCatalogs, CatalogAsset } from '@/lib/supabase/client';
 import { ShieldAlert, UploadCloud, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Play, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -14,11 +14,14 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedCatalogForRepair, setSelectedCatalogForRepair] = useState<CatalogAsset | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
   
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canDelete = currentRole === 'admin' || currentRole === 'vendedor';
 
   const loadCatalogs = async () => {
     setLoading(true);
@@ -33,10 +36,36 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    if (currentRole === 'admin') {
+    if (currentRole === 'admin' || currentRole === 'vendedor') {
       loadCatalogs();
     }
   }, [currentRole]);
+
+  // Clear selection when catalogs data reload
+  useEffect(() => {
+    setSelectedCatalogIds([]);
+  }, [catalogs]);
+
+  // Delete Selected catalogs
+  const handleDeleteSelected = async () => {
+    if (selectedCatalogIds.length === 0) return;
+    
+    const confirmMsg = `¿Estás seguro de que deseas eliminar los ${selectedCatalogIds.length} archivos seleccionados del historial?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const success = await deleteCatalogs(selectedCatalogIds);
+      if (success) {
+        setCatalogs(prev => prev.filter(c => !selectedCatalogIds.includes(c.id)));
+        setSelectedCatalogIds([]);
+        showToast(`🗑️ Se eliminaron ${selectedCatalogIds.length} archivos correctamente.`);
+      } else {
+        showToast(`❌ Error al eliminar los archivos.`);
+      }
+    } catch (err) {
+      console.error('Error deleting catalogs:', err);
+    }
+  };
 
   // Handle real file upload change
   const handleRealFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,7 +174,7 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
   };
 
   // 1. Role Authorization Check
-  if (currentRole !== 'admin') {
+  if (currentRole !== 'admin' && currentRole !== 'vendedor') {
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-slate-950/40 border border-slate-800 rounded-3xl backdrop-blur-xl text-center space-y-6 max-w-xl mx-auto my-10 animate-in fade-in duration-300">
         <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-500 shadow-lg shadow-rose-955/20">
@@ -154,12 +183,12 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
         <div className="space-y-2">
           <h2 className="text-lg font-bold text-slate-100">Acceso Restringido</h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Esta sección de administración es exclusiva para Administradores de TI y Gestores de Base de Datos de Site Solutions.
+            Esta sección de administración es exclusiva para Administradores de TI y personal de Ventas de Site Solutions.
           </p>
         </div>
         <div className="pt-2">
           <div className="text-xs px-4 py-2.5 bg-slate-900 border border-slate-800 text-cyan-400 rounded-xl font-medium inline-block">
-            Tip: Cambia el perfil activo en la barra superior a "Personal Técnico" o "Administrador" (si habilitado) para explorar.
+            Tip: Cambia el perfil activo en la barra superior a "Ventas" o "Admin TI" para explorar y gestionar archivos.
           </div>
         </div>
       </div>
@@ -316,26 +345,54 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
       </div>
 
       {/* Monitoring Active Catalogs Table */}
-      <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden shadow-xl backdrop-blur-xl">
+      <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden shadow-xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-3 duration-300">
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
           <div>
             <h3 className="text-sm font-bold text-slate-100">Catálogos Activos e Historial</h3>
             <p className="text-xs text-slate-400">Listado de fichas técnicas y tablas maestras procesadas por el sistema.</p>
           </div>
 
-          <button
-            onClick={handlePublishAll}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all active:scale-95 shadow-md shadow-cyan-950/20 flex items-center gap-1.5"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Validar y publicar
-          </button>
+          <div className="flex items-center gap-2.5">
+            {canDelete && selectedCatalogIds.length > 0 && (
+              <button
+                onClick={handleDeleteSelected}
+                className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all active:scale-95 shadow-md shadow-rose-950/20 flex items-center gap-1.5 animate-in slide-in-from-right-3 duration-250"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Eliminar ({selectedCatalogIds.length})</span>
+              </button>
+            )}
+
+            <button
+              onClick={handlePublishAll}
+              className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all active:scale-95 shadow-md shadow-cyan-950/20 flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Validar y publicar
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-950/40 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800/80">
+                {canDelete && (
+                  <th className="w-12 px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={catalogs.length > 0 && selectedCatalogIds.length === catalogs.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCatalogIds(catalogs.map(c => c.id));
+                        } else {
+                          setSelectedCatalogIds([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-800 bg-slate-900 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-slate-950 focus:ring-2 cursor-pointer transition-all"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-4">Nombre del Archivo</th>
                 <th className="px-6 py-4">Fecha de Carga</th>
                 <th className="px-6 py-4">Tamaño</th>
@@ -346,24 +403,47 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
             <tbody className="divide-y divide-slate-850 text-sm text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12">
+                  <td colSpan={canDelete ? 6 : 5} className="text-center py-12">
                     <div className="w-6 h-6 rounded-full border-2 border-slate-700 border-t-cyan-500 animate-spin mx-auto mb-2" />
                     <span className="text-xs text-slate-500">Cargando catálogos...</span>
                   </td>
                 </tr>
               ) : catalogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-500 text-xs">
+                  <td colSpan={canDelete ? 6 : 5} className="text-center py-12 text-slate-500 text-xs">
                     No hay catálogos cargados en el sistema de Site Solutions.
                   </td>
                 </tr>
               ) : (
                 catalogs.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-slate-900/10 transition-all">
+                  <tr
+                    key={cat.id}
+                    className={`hover:bg-slate-900/10 transition-all ${
+                      selectedCatalogIds.includes(cat.id) ? 'bg-cyan-950/5' : ''
+                    }`}
+                  >
+                    {canDelete && (
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedCatalogIds.includes(cat.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedCatalogIds(prev => [...prev, cat.id]);
+                            } else {
+                              setSelectedCatalogIds(prev => prev.filter(id => id !== cat.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-slate-800 bg-slate-900 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-slate-950 focus:ring-2 cursor-pointer transition-all"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4 font-medium text-slate-200">
                       <div className="flex items-center gap-2">
                         {cat.fileName.endsWith('.pdf') ? (
                           <FileText className="w-4 h-4 text-rose-400 shrink-0" />
+                        ) : cat.fileName.endsWith('.docx') || cat.fileName.endsWith('.doc') ? (
+                          <FileText className="w-4 h-4 text-blue-400 shrink-0" />
                         ) : (
                           <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                         )}

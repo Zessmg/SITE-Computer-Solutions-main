@@ -382,6 +382,36 @@ export async function repairCatalogErrors(id: string): Promise<CatalogAsset | nu
 }
 
 /**
+ * DELETE: Eliminar uno o más archivos del catálogo histórico.
+ */
+export async function deleteCatalogs(ids: string[]): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('catalogs')
+        .delete()
+        .in('id', ids);
+      
+      if (!error) return true;
+      console.warn('Supabase deleteCatalogs error, falling back:', error);
+    } catch (err) {
+      console.error('Supabase deleteCatalogs exception:', err);
+    }
+  }
+
+  // Fallback local storage
+  try {
+    const catalogs = getLocalStorageData<CatalogAsset[]>('site_solutions_catalogs', SEED_CATALOGS);
+    const filtered = catalogs.filter(item => !ids.includes(item.id));
+    setLocalStorageData('site_solutions_catalogs', filtered);
+    return true;
+  } catch (err) {
+    console.error('Local deleteCatalogs exception:', err);
+    return false;
+  }
+}
+
+/**
  * AUTH: Iniciar sesión con Google (Soporta Supabase OAuth y fallback simulado).
  */
 export async function signInWithGoogle(email: string = 'admin@sitesolutions.com'): Promise<void> {
