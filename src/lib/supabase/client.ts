@@ -298,15 +298,23 @@ export async function uploadCatalogFile(fileName: string, fileSize: string): Pro
 
   if (fileName.toLowerCase().includes('error') || fileName.toLowerCase().includes('temp')) {
     status = 'Con error';
-    errors = [
-      'Celda vacía detectada en la columna "Código de Barras" (Fila 8)',
-      'Error de tipo: Se esperaba valor DECIMAL en columna "Precio" (Fila 19, valor: "Consultar")',
-      'SKU no registrado en catálogo maestro: SWT-FAST-8P (Fila 34)'
-    ];
-  } else if (extension !== 'xlsx' && extension !== 'pdf') {
+    if (extension === 'docx' || extension === 'doc') {
+      errors = [
+        'Falta estructura jerárquica de encabezados (H1, H2) requerida para la ingesta del motor de IA.',
+        'Se detectaron 3 imágenes sin descripción alternativa (Alt Text) para procesamiento semántico.',
+        'SKU de referencia SWT-FAST-8P no válido o no registrado en el cuerpo del manual técnico.'
+      ];
+    } else {
+      errors = [
+        'Celda vacía detectada en la columna "Código de Barras" (Fila 8)',
+        'Error de tipo: Se esperaba valor DECIMAL en columna "Precio" (Fila 19, valor: "Consultar")',
+        'SKU no registrado en catálogo maestro: SWT-FAST-8P (Fila 34)'
+      ];
+    }
+  } else if (extension !== 'xlsx' && extension !== 'pdf' && extension !== 'docx' && extension !== 'doc') {
     status = 'Con error';
     errors = [
-      'Formato de archivo inválido. Solo se admiten archivos Excel (.xlsx) o fichas técnicas PDF (.pdf).'
+      'Formato de archivo inválido. Solo se admiten archivos Excel (.xlsx), fichas técnicas PDF (.pdf) o documentos Word (.docx, .doc).'
     ];
   }
 

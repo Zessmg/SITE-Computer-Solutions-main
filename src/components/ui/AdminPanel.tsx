@@ -12,8 +12,8 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
   const [catalogs, setCatalogs] = useState<CatalogAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [simulatedFileName, setSimulatedFileName] = useState('');
   const [selectedCatalogForRepair, setSelectedCatalogForRepair] = useState<CatalogAsset | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -38,34 +38,82 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
     }
   }, [currentRole]);
 
-  // Handle simulated upload
-  const handleSimulatedUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!simulatedFileName.trim() || uploading) return;
+  // Handle real file upload change
+  const handleRealFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     setUploading(true);
-    // Simulate network delay
+    const fileName = file.name;
+    const fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
     setTimeout(async () => {
       try {
-        const fileExt = simulatedFileName.includes('.') ? '' : '.xlsx';
-        const finalName = simulatedFileName.trim() + fileExt;
-        const simulatedSize = `${(Math.random() * 5 + 1).toFixed(1)} MB`;
-
-        const newCat = await uploadCatalogFile(finalName, simulatedSize);
+        const newCat = await uploadCatalogFile(fileName, fileSize);
         setCatalogs(prev => [newCat, ...prev]);
-        setSimulatedFileName('');
         
         if (newCat.status === 'Con error') {
-          showToast(`⚠️ Alerta: El archivo contiene errores estructurales.`);
+          showToast(`⚠️ Alerta: El archivo "${newCat.fileName}" contiene errores.`);
         } else {
           showToast(`✅ Archivo "${newCat.fileName}" cargado y validado.`);
         }
       } catch (err) {
-        console.error('Error uploading catalog:', err);
+        console.error('Error uploading real file:', err);
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''; // Reset input
+        }
+      }
+    }, 1200);
+  };
+
+  // Drag and drop event handlers
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    // Check extension
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!['xlsx', 'pdf', 'docx', 'doc'].includes(extension)) {
+      showToast('❌ Formato inválido. Solo se admiten .xlsx, .pdf, .docx o .doc');
+      return;
+    }
+
+    setUploading(true);
+    const fileName = file.name;
+    const fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+    setTimeout(async () => {
+      try {
+        const newCat = await uploadCatalogFile(fileName, fileSize);
+        setCatalogs(prev => [newCat, ...prev]);
+        
+        if (newCat.status === 'Con error') {
+          showToast(`⚠️ Alerta: El archivo "${newCat.fileName}" contiene errores.`);
+        } else {
+          showToast(`✅ Archivo "${newCat.fileName}" cargado y validado.`);
+        }
+      } catch (err) {
+        console.error('Error uploading dropped file:', err);
       } finally {
         setUploading(false);
       }
-    }, 1000);
+    }, 1200);
   };
 
   const handleRepair = async (id: string) => {
@@ -141,52 +189,84 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
               <UploadCloud className="w-5 h-5 text-cyan-500" />
               Módulo de Carga de Fichas y Catálogos
             </h3>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Carga archivos estructurados en Excel (.xlsx) o fichas técnicas PDF (.pdf). El sistema validará automáticamente la consistencia de datos, duplicación de SKU y celdas vacías en tiempo real.
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              Arrastra y suelta tus archivos o haz clic en el área inferior para subir tus catálogos maestros Excel (.xlsx), fichas técnicas PDF (.pdf) o documentos Word (.docx, .doc).
             </p>
           </div>
 
-          <form onSubmit={handleSimulatedUpload} className="space-y-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Nombre del archivo (ej. catalogo_precios_computo_v3)"
-                value={simulatedFileName}
-                onChange={(e) => setSimulatedFileName(e.target.value)}
-                className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-600 transition-all font-mono"
-              />
-              <span className="absolute right-3.5 top-3.5 text-xs text-slate-500 font-medium">.xlsx o .pdf</span>
-            </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleRealFileUpload}
+            accept=".xlsx,.pdf,.docx,.doc"
+            className="hidden"
+          />
 
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={!simulatedFileName.trim() || uploading}
-                className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white rounded-xl py-3 font-semibold text-xs transition-all active:scale-98 flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/20"
-              >
-                {uploading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Validando estructura...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="w-4 h-4" />
-                    <span>Cargar y Validar Archivo</span>
-                  </>
-                )}
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setSimulatedFileName('catalogo_inventario_con_error_temp')}
-                className="bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-xs px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
-                title="Cargar simulación con errores"
-              >
-                Simular Error
-              </button>
-            </div>
-          </form>
+          <div
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none ${
+              isDragActive
+                ? 'border-cyan-550 bg-cyan-950/10'
+                : 'border-slate-800 hover:border-slate-700 bg-slate-900/20 hover:bg-slate-900/30'
+            }`}
+          >
+            {uploading ? (
+              <div className="flex flex-col items-center gap-3 py-2">
+                <RefreshCw className="w-8 h-8 text-cyan-500 animate-spin" />
+                <span className="text-xs font-semibold text-cyan-400">Validando estructura y consistencia de datos...</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <UploadCloud className={`w-8 h-8 ${isDragActive ? 'text-cyan-400' : 'text-slate-550'}`} />
+                <span className="text-xs font-bold text-slate-300">
+                  {isDragActive ? '¡Suelta el archivo aquí!' : 'Arrastra tu archivo aquí o haz clic para explorar'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  Formatos admitidos: Excel (.xlsx), PDF (.pdf), Word (.docx, .doc)
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Test Simulation controls underneath */}
+          <div className="mt-4 flex gap-2.5 justify-end">
+            <span className="text-[10px] text-slate-500 self-center mr-auto">Simular cargas de prueba:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setUploading(true);
+                setTimeout(async () => {
+                  const newCat = await uploadCatalogFile('catalogo_inventario_con_error_temp.xlsx', '1.4 MB');
+                  setCatalogs(prev => [newCat, ...prev]);
+                  setUploading(false);
+                  showToast('⚠️ Alerta: Simulación de error Excel cargada.');
+                }, 1000);
+              }}
+              className="bg-slate-900 border border-slate-850 hover:bg-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] px-3.5 py-2.5 rounded-xl font-medium transition-all active:scale-95"
+            >
+              Simular Error Excel
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUploading(true);
+                setTimeout(async () => {
+                  const newCat = await uploadCatalogFile('manual_usuario_con_error.docx', '2.5 MB');
+                  setCatalogs(prev => [newCat, ...prev]);
+                  setUploading(false);
+                  showToast('⚠️ Alerta: Simulación de error Word cargada.');
+                }, 1000);
+              }}
+              className="bg-slate-900 border border-slate-850 hover:bg-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] px-3.5 py-2.5 rounded-xl font-medium transition-all active:scale-95"
+            >
+              Simular Error Word
+            </button>
+          </div>
         </div>
 
         {/* Module: Punto de Control 1 - Alertas de Validación */}
