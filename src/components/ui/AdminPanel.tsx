@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchCatalogs, uploadCatalogFile, repairCatalogErrors, deleteCatalogs, CatalogAsset } from '@/lib/supabase/client';
-import { ShieldAlert, UploadCloud, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Play, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react';
+import { fetchCatalogs, uploadCatalogFile, repairCatalogErrors, deleteCatalogs, validateCatalog, rollbackCatalog, CatalogAsset } from '@/lib/supabase/client';
+import { ShieldAlert, UploadCloud, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Play, RefreshCw, Trash2, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface AdminPanelProps {
   currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
@@ -15,6 +15,11 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
   const [selectedCatalogForRepair, setSelectedCatalogForRepair] = useState<CatalogAsset | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
+  const [confirmAction, setConfirmAction] = useState<{
+    id: string;
+    type: 'validate' | 'rollback';
+    fileName: string;
+  } | null>(null);
   
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -155,6 +160,30 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
       }
     } catch (err) {
       console.error('Error repairing catalog:', err);
+    }
+  };
+
+  const handleValidate = async (id: string) => {
+    try {
+      const updated = await validateCatalog(id);
+      if (updated) {
+        setCatalogs(prev => prev.map(c => c.id === id ? updated : c));
+        showToast('✅ Catálogo verificado y marcado como Validado.');
+      }
+    } catch (err) {
+      console.error('Error validating catalog:', err);
+    }
+  };
+
+  const handleRollback = async (id: string) => {
+    try {
+      const updated = await rollbackCatalog(id);
+      if (updated) {
+        setCatalogs(prev => prev.map(c => c.id === id ? updated : c));
+        showToast('🔄 Validación revertida. Estado cambiado a Pendiente.');
+      }
+    } catch (err) {
+      console.error('Error rolling back catalog validation:', err);
     }
   };
 
@@ -466,9 +495,11 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                         cat.status === 'Validado'
                           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          : cat.status === 'Pendiente'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                       }`}>
-                        {cat.status === 'Validado' ? 'Validado' : 'Con error'}
+                        {cat.status === 'Validado' ? 'Validado' : cat.status === 'Pendiente' ? 'Pendiente' : 'Con error'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -480,11 +511,29 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
                           >
                             Revisar Errores
                           </button>
+                        ) : cat.status === 'Pendiente' ? (
+                          <button
+                            onClick={() => setConfirmAction({ id: cat.id, type: 'validate', fileName: cat.fileName })}
+                            className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Validar
+                          </button>
                         ) : (
-                          <span className="text-xs text-slate-500 flex items-center gap-1 font-semibold pr-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                            Listo
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500 flex items-center gap-1 font-semibold pr-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                              Listo
+                            </span>
+                            <button
+                              onClick={() => setConfirmAction({ id: cat.id, type: 'rollback', fileName: cat.fileName })}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 px-2 py-1 rounded text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-0.5 shadow-sm"
+                              title="Revertir a Pendiente para hacer más cambios"
+                            >
+                              <RotateCcw className="w-2.5 h-2.5 text-slate-400" />
+                              Deshacer
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -558,6 +607,65 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Auto-corregir y Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Confirmation Dialog Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              {confirmAction.type === 'validate' ? (
+                <div className="p-3 rounded-full bg-emerald-500/10 text-emerald-400">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+              ) : (
+                <div className="p-3 rounded-full bg-amber-500/10 text-amber-400">
+                  <RotateCcw className="w-6 h-6" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-base font-bold text-slate-100">
+                  {confirmAction.type === 'validate' ? 'Confirmar Validación' : 'Revertir Validación'}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  ¿Estás seguro de que deseas continuar con esta acción?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-850 space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Archivo Seleccionado:</span>
+              <span className="text-xs font-mono text-cyan-400 block break-all">{confirmAction.fileName}</span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  const { id, type } = confirmAction;
+                  setConfirmAction(null);
+                  if (type === 'validate') {
+                    await handleValidate(id);
+                  } else {
+                    await handleRollback(id);
+                  }
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 ${
+                  confirmAction.type === 'validate'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-950/50'
+                }`}
+              >
+                {confirmAction.type === 'validate' ? 'Validar Catálogo' : 'Confirmar Deshacer'}
               </button>
             </div>
           </div>

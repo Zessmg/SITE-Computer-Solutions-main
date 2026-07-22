@@ -52,7 +52,7 @@ export interface CatalogAsset {
   id: string;
   fileName: string;
   uploadDate: string;
-  status: 'Validado' | 'Con error';
+  status: 'Validado' | 'Con error' | 'Pendiente';
   errors?: string[];
   size: string;
   url?: string;
@@ -102,7 +102,7 @@ const SEED_CATALOGS: CatalogAsset[] = [
     id: 'cat-1',
     fileName: 'catalogo_servidores_q2_2026.xlsx',
     uploadDate: '2026-07-15',
-    status: 'Validado',
+    status: 'Pendiente',
     size: '4.2 MB',
     url: 'https://bpcodbujtqqlnzxvfsyx.supabase.co/storage/v1/object/public/catalogs/catalogo_servidores_q2_2026.xlsx'
   },
@@ -359,7 +359,7 @@ export async function uploadCatalogFile(fileName: string, fileSize: string, file
   const extension = fileName.split('.').pop()?.toLowerCase();
   
   // Reglas de validación simuladas (si contiene "error" o es de cierto tipo)
-  let status: 'Validado' | 'Con error' = 'Validado';
+  let status: 'Validado' | 'Con error' | 'Pendiente' = 'Pendiente';
   let errors: string[] = [];
 
   if (fileName.toLowerCase().includes('error') || fileName.toLowerCase().includes('temp')) {
@@ -382,6 +382,9 @@ export async function uploadCatalogFile(fileName: string, fileSize: string, file
     errors = [
       'Formato de archivo inválido. Solo se admiten archivos Excel (.xlsx), fichas técnicas PDF (.pdf) o documentos Word (.docx, .doc).'
     ];
+  } else {
+    // Si el archivo está limpio y estructurado, su estado inicial es "Pendiente de revisión"
+    status = 'Pendiente';
   }
 
   const defaultUrl = 'https://bpcodbujtqqlnzxvfsyx.supabase.co';
@@ -492,6 +495,70 @@ export async function deleteCatalogs(ids: string[]): Promise<boolean> {
     console.error('Local deleteCatalogs exception:', err);
     return false;
   }
+}
+
+/**
+ * UPDATE: Confirmar revisión de un catálogo y cambiar estado a "Validado".
+ */
+export async function validateCatalog(id: string): Promise<CatalogAsset | null> {
+  let updatedCatalog: CatalogAsset | null = null;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('catalogs')
+        .update({ status: 'Validado' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (!error && data) return data as CatalogAsset;
+    } catch (err) {
+      console.error('Supabase validateCatalog exception:', err);
+    }
+  }
+
+  // Fallback local storage
+  const catalogs = getLocalStorageData<CatalogAsset[]>('site_solutions_catalogs', SEED_CATALOGS);
+  const index = catalogs.findIndex(item => item.id === id);
+  if (index !== -1) {
+    catalogs[index].status = 'Validado';
+    updatedCatalog = catalogs[index];
+    setLocalStorageData('site_solutions_catalogs', catalogs);
+  }
+  return updatedCatalog;
+}
+
+/**
+ * UPDATE: Revertir la validación de un catálogo y regresarlo a "Pendiente".
+ */
+export async function rollbackCatalog(id: string): Promise<CatalogAsset | null> {
+  let updatedCatalog: CatalogAsset | null = null;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('catalogs')
+        .update({ status: 'Pendiente' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (!error && data) return data as CatalogAsset;
+    } catch (err) {
+      console.error('Supabase rollbackCatalog exception:', err);
+    }
+  }
+
+  // Fallback local storage
+  const catalogs = getLocalStorageData<CatalogAsset[]>('site_solutions_catalogs', SEED_CATALOGS);
+  const index = catalogs.findIndex(item => item.id === id);
+  if (index !== -1) {
+    catalogs[index].status = 'Pendiente';
+    updatedCatalog = catalogs[index];
+    setLocalStorageData('site_solutions_catalogs', catalogs);
+  }
+  return updatedCatalog;
 }
 
 /**
