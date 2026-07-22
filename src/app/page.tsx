@@ -135,7 +135,7 @@ export default function Home() {
       case 'vendedor':
         return {
           title: 'Asistente de IA para Ventas y Comercial',
-          desc: 'Consulta precios corporativos de lista en USD, verifica existencias en tiempo real de almacenes centrales y genera cotizaciones en segundos.',
+          desc: 'Consulta precios corporativos de lista en MXN, verifica existencias en tiempo real de almacenes centrales y genera cotizaciones en segundos.',
           badge: '💼 Vista Comercial Optimizada'
         };
       case 'soporte':

@@ -344,9 +344,9 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                 <div className="flex items-center text-slate-200">
                   <DollarSign className="w-4 h-4 text-cyan-500" />
                   <strong className="text-base font-extrabold text-cyan-400">
-                    {p.price?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {p.price?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </strong>
-                  <span className="text-[10px] text-slate-500 font-bold ml-1 font-mono">USD</span>
+                  <span className="text-[10px] text-slate-500 font-bold ml-1 font-mono">MXN</span>
                 </div>
 
                 {canModify ? (
@@ -426,7 +426,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Lista (USD)</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Lista (MXN)</label>
                   <input
                     type="number"
                     required
@@ -583,7 +583,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Venta (USD)</label>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Venta (MXN)</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">$</span>
                   <input
@@ -594,7 +594,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                     onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})}
                     className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-6 pr-10 py-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
-                  <span className="absolute right-3.5 top-2.5 text-[10px] text-slate-500 font-bold font-mono">USD</span>
+                  <span className="absolute right-3.5 top-2.5 text-[10px] text-slate-500 font-bold font-mono">MXN</span>
                 </div>
               </div>
 

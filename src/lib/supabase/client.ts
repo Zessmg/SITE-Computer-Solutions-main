@@ -67,7 +67,7 @@ const SEED_HISTORY: HistoryRecord[] = [
     date: '2026-07-21',
     client: 'Banco Azteca / Ventas',
     query: 'Necesitamos cotización de 5 servidores de doble procesador para virtualización.',
-    response: 'Asistente: Servidor Enterprise Rack SiteCore 2U X9 con 2x AMD EPYC (192 núcleos totales), 512GB RAM, 4x 3.84TB NVMe. Precio unitario: $4,850.00 USD. Stock disponible: 14 unidades.',
+    response: 'Asistente: Servidor Enterprise Rack SiteCore 2U X9 con 2x AMD EPYC (192 núcleos totales), 512GB RAM, 4x 3.84TB NVMe. Precio unitario: $97,000.00 MXN. Stock disponible: 14 unidades.',
     status: 'Aprobada'
   },
   {
@@ -91,7 +91,7 @@ const SEED_HISTORY: HistoryRecord[] = [
     date: '2026-07-18',
     client: 'Cemex Corp / Ventas',
     query: 'Cotizar almacenamiento NAS con soporte para cifrado por hardware.',
-    response: 'Asistente: Almacenamiento DataVault NAS 8-Bay, Xeon E-2336 6-Core, 32GB RAM, encriptación AES-256 por hardware. Precio: $3,150.00 USD.',
+    response: 'Asistente: Almacenamiento DataVault NAS 8-Bay, Xeon E-2336 6-Core, 32GB RAM, encriptación AES-256 por hardware. Precio: $63,000.00 MXN.',
     status: 'Rechazada'
   }
 ];
@@ -437,7 +437,7 @@ const SEED_PRODUCTS = [
     name: 'Servidor Enterprise Rack SiteCore 2U X9',
     category: 'Servidores',
     brand: 'Site Solutions',
-    price: 4850.00,
+    price: 97000.00,
     stock: 14,
     warehouse_location: 'Almacén Central A-12',
     description: 'Servidor de doble socket diseñado para virtualización masiva (VMware/Proxmox) y cargas de trabajo críticas de base de datos SQL.',
@@ -469,7 +469,7 @@ const SEED_PRODUCTS = [
     name: 'Workstation Laptop TitanBook Pro 16',
     category: 'Workstations',
     brand: 'Site Solutions',
-    price: 2499.00,
+    price: 49990.00,
     stock: 28,
     warehouse_location: 'Almacén Norte B-04',
     description: 'Workstation móvil ultra-resistente en aleación de titanio y magnesio con certificación militar MIL-STD-810H para ingenieros de campo.',
@@ -501,7 +501,7 @@ const SEED_PRODUCTS = [
     name: 'Switch de Red Óptica SwitchNet 48P SFP+',
     category: 'Networking',
     brand: 'Site Solutions',
-    price: 1890.00,
+    price: 37800.00,
     stock: 9,
     warehouse_location: 'Almacén Redes C-01',
     description: 'Switch L3 totalmente administrable con 48 puertos 1GbE RJ45 PoE+ (740W totales) y 4 puertos uplink 10G SFP+ para fibra.',
@@ -533,7 +533,7 @@ const SEED_PRODUCTS = [
     name: 'Almacenamiento Redundante DataVault NAS 8-Bay',
     category: 'Almacenamiento',
     brand: 'Site Solutions',
-    price: 3150.00,
+    price: 63000.00,
     stock: 5,
     warehouse_location: 'Almacén Central A-05',
     description: 'Matriz NAS de 8 bahías hot-swap con ZFS preconfigurado y snapshots inmutables anti-ransomware.',

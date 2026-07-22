@@ -78,7 +78,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         responseText = `He localizado el equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) en nuestra base de conocimientos. `;
         
         if (currentRole === 'vendedor') {
-          responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${warehouseText}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('en-US', {minimumFractionDigits: 2})} USD**.`;
+          responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${warehouseText}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN**.`;
         } else if (currentRole === 'soporte') {
           responseText += `La ficha de diagnóstico indica: **${solutionText}** (Versión de Firmware recomendada: \`${matchedProduct.support_info?.firmware_ver || 'v1.0'}\`).`;
         } else {
@@ -181,7 +181,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                     </div>
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">Precio Lista</span>
-                      <strong className="text-cyan-400">${msg.metadata.price?.toLocaleString()} USD</strong>
+                      <strong className="text-cyan-400">${msg.metadata.price?.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN</strong>
                     </div>
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">Disponibilidad</span>
