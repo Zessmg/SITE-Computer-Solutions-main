@@ -357,3 +357,71 @@ export async function repairCatalogErrors(id: string): Promise<CatalogAsset | nu
   }
   return updatedCatalog;
 }
+
+/**
+ * AUTH: Iniciar sesión con Google (Soporta Supabase OAuth y fallback simulado).
+ */
+export async function signInWithGoogle(email: string = 'admin@sitesolutions.com'): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : ''
+        }
+      });
+      if (error) throw error;
+      return;
+    } catch (err) {
+      console.error('Supabase Google Sign-In error:', err);
+    }
+  }
+
+  // Fallback local storage login simulation
+  const name = email.split('@')[0];
+  const user = {
+    id: 'u-' + Math.random().toString(36).substr(2, 9),
+    email,
+    user_metadata: {
+      full_name: name.charAt(0).toUpperCase() + name.slice(1) + ' (Demo)',
+      avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
+    }
+  };
+  setLocalStorageData('site_solutions_session', user);
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
+}
+
+/**
+ * AUTH: Cerrar sesión actual.
+ */
+export async function signOutUser(): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Supabase Sign-Out error:', err);
+    }
+  }
+  
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('site_solutions_session');
+    window.location.reload();
+  }
+}
+
+/**
+ * AUTH: Obtener usuario actual en sesión.
+ */
+export async function getCurrentUser(): Promise<any> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) return data.user;
+    } catch (err) {
+      console.error('Supabase getUser error:', err);
+    }
+  }
+  return getLocalStorageData<any>('site_solutions_session', null);
+}
