@@ -274,13 +274,75 @@ export async function updateApprovalStatus(id: string, status: 'Aprobada' | 'Pen
 export async function fetchCatalogs(): Promise<CatalogAsset[]> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      // 1. Obtener archivos registrados en la tabla de base de datos
+      const { data: dbCatalogs, error: dbError } = await supabase
         .from('catalogs')
         .select('*')
         .order('uploadDate', { ascending: false });
       
-      if (!error && data) return data as CatalogAsset[];
-      console.warn('Supabase fetchCatalogs error, falling back:', error);
+      let catalogsList = dbError || !dbCatalogs ? [] : (dbCatalogs as CatalogAsset[]);
+
+      // 2. Obtener lista de archivos reales en el bucket de Storage
+      const { data: storageFiles, error: storageError } = await supabase.storage
+        .from('catalogs')
+        .list('', { limit: 100 });
+
+      if (!storageError && Array.isArray(storageFiles)) {
+        // Ignorar placeholders vacíos por defecto
+        const filteredStorage = storageFiles.filter(
+          f => f.name !== '.emptyFolderPlaceholder' && f.name !== '.placeholder'
+        );
+
+        // Identificar archivos en Storage que NO están en la base de datos (subidos externamente)
+        const newSyncItems: CatalogAsset[] = [];
+        
+        for (const file of filteredStorage) {
+          const existsInDb = catalogsList.some(c => c.fileName === file.name);
+          if (!existsInDb) {
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            const defaultUrl = 'https://bpcodbujtqqlnzxvfsyx.supabase.co';
+            const finalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || defaultUrl;
+            const fileUrl = `${finalSupabaseUrl}/storage/v1/object/public/catalogs/${file.name}`;
+            
+            // Validar extensión
+            let status: 'Validado' | 'Con error' = 'Validado';
+            let errors: string[] = [];
+            if (extension !== 'xlsx' && extension !== 'pdf' && extension !== 'docx' && extension !== 'doc') {
+              status = 'Con error';
+              errors = ['Formato no soportado en carga externa o manual.'];
+            }
+
+            const newCatalog: CatalogAsset = {
+              id: 'cat-sync-' + Math.random().toString(36).substr(2, 9),
+              fileName: file.name,
+              uploadDate: file.created_at ? file.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+              status,
+              errors,
+              size: file.metadata?.size ? (file.metadata.size / (1024 * 1024)).toFixed(2) + ' MB' : '0.1 MB',
+              url: fileUrl
+            };
+
+            newSyncItems.push(newCatalog);
+          }
+        }
+
+        // Si hay nuevos elementos encontrados en Storage, intentamos guardarlos en la base de datos para persistirlos
+        if (newSyncItems.length > 0) {
+          await supabase
+            .from('catalogs')
+            .insert(newSyncItems);
+          
+          // Incluso si falla la inserción por políticas RLS en la base de datos,
+          // los añadimos al listado en memoria para que se muestren de inmediato en el portal.
+          catalogsList = [...newSyncItems, ...catalogsList];
+        }
+      }
+
+      if (!dbError && dbCatalogs && catalogsList.length > 0) {
+        return catalogsList;
+      }
+      
+      console.warn('Supabase fetchCatalogs empty or error, falling back:', dbError || 'Empty database');
     } catch (err) {
       console.error('Supabase fetchCatalogs exception:', err);
     }
