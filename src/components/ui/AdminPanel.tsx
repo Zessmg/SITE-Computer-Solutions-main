@@ -78,7 +78,7 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
 
     setTimeout(async () => {
       try {
-        const newCat = await uploadCatalogFile(fileName, fileSize);
+        const newCat = await uploadCatalogFile(fileName, fileSize, file);
         setCatalogs(prev => [newCat, ...prev]);
         
         if (newCat.status === 'Con error') {
@@ -129,7 +129,7 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
 
     setTimeout(async () => {
       try {
-        const newCat = await uploadCatalogFile(fileName, fileSize);
+        const newCat = await uploadCatalogFile(fileName, fileSize, file);
         setCatalogs(prev => [newCat, ...prev]);
         
         if (newCat.status === 'Con error') {
@@ -438,8 +438,14 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
                         />
                       </td>
                     )}
-                    <td className="px-6 py-4 font-medium text-slate-200">
-                      <div className="flex items-center gap-2">
+                    <td className="px-6 py-4 font-medium">
+                      <a
+                        href={cat.url || `https://bpcodbujtqqlnzxvfsyx.supabase.co/storage/v1/object/public/catalogs/${cat.fileName}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 font-mono text-xs text-slate-200 hover:text-cyan-400 hover:underline transition-all cursor-pointer inline-flex"
+                        title="Abrir archivo almacenado"
+                      >
                         {cat.fileName.endsWith('.pdf') ? (
                           <FileText className="w-4 h-4 text-rose-400 shrink-0" />
                         ) : cat.fileName.endsWith('.docx') || cat.fileName.endsWith('.doc') ? (
@@ -447,8 +453,8 @@ export default function AdminPanel({ currentRole }: AdminPanelProps) {
                         ) : (
                           <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                         )}
-                        <span className="font-mono text-xs">{cat.fileName}</span>
-                      </div>
+                        <span>{cat.fileName}</span>
+                      </a>
                     </td>
                     <td className="px-6 py-4 text-xs text-slate-400 font-mono">
                       {cat.uploadDate}

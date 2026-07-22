@@ -55,6 +55,7 @@ export interface CatalogAsset {
   status: 'Validado' | 'Con error';
   errors?: string[];
   size: string;
+  url?: string;
 }
 
 // ==============================================================
@@ -102,14 +103,16 @@ const SEED_CATALOGS: CatalogAsset[] = [
     fileName: 'catalogo_servidores_q2_2026.xlsx',
     uploadDate: '2026-07-15',
     status: 'Validado',
-    size: '4.2 MB'
+    size: '4.2 MB',
+    url: 'https://bpcodbujtqqlnzxvfsyx.supabase.co/storage/v1/object/public/catalogs/catalogo_servidores_q2_2026.xlsx'
   },
   {
     id: 'cat-2',
     fileName: 'ficha_tecnica_titanbook.pdf',
     uploadDate: '2026-07-18',
     status: 'Validado',
-    size: '1.8 MB'
+    size: '1.8 MB',
+    url: 'https://bpcodbujtqqlnzxvfsyx.supabase.co/storage/v1/object/public/catalogs/ficha_tecnica_titanbook.pdf'
   },
   {
     id: 'cat-3',
@@ -120,7 +123,8 @@ const SEED_CATALOGS: CatalogAsset[] = [
       'Celda vacía en columna "Precio" (Fila 12, SKU: SWT-FIBER-48P)',
       'Código SKU duplicado en Fila 24 (LTP-PRO-16X)'
     ],
-    size: '2.5 MB'
+    size: '2.5 MB',
+    url: 'https://bpcodbujtqqlnzxvfsyx.supabase.co/storage/v1/object/public/catalogs/matriz_precios_networking_v2.xlsx'
   }
 ];
 
@@ -289,7 +293,7 @@ export async function fetchCatalogs(): Promise<CatalogAsset[]> {
  * INSERT & VALIDATE: Simular la carga de un archivo de catálogo,
  * aplicando validaciones estructurales de calidad de datos.
  */
-export async function uploadCatalogFile(fileName: string, fileSize: string): Promise<CatalogAsset> {
+export async function uploadCatalogFile(fileName: string, fileSize: string, fileObject?: File): Promise<CatalogAsset> {
   const extension = fileName.split('.').pop()?.toLowerCase();
   
   // Reglas de validación simuladas (si contiene "error" o es de cierto tipo)
@@ -318,17 +322,34 @@ export async function uploadCatalogFile(fileName: string, fileSize: string): Pro
     ];
   }
 
+  const defaultUrl = 'https://bpcodbujtqqlnzxvfsyx.supabase.co';
+  const finalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || defaultUrl;
+  const fileUrl = `${finalSupabaseUrl}/storage/v1/object/public/catalogs/${fileName}`;
+
   const newCatalog: CatalogAsset = {
     id: 'cat-' + Math.random().toString(36).substr(2, 9),
     fileName,
     uploadDate: new Date().toISOString().split('T')[0],
     status,
     errors,
-    size: fileSize
+    size: fileSize,
+    url: fileUrl
   };
 
   if (isSupabaseConfigured && supabase) {
     try {
+      // 1. Si se pasó el archivo físico, lo subimos a Supabase Storage
+      if (fileObject) {
+        const { error: storageError } = await supabase.storage
+          .from('catalogs')
+          .upload(fileName, fileObject, { cacheControl: '3600', upsert: true });
+        
+        if (storageError) {
+          console.warn('Supabase storage upload error:', storageError.message);
+        }
+      }
+
+      // 2. Insertamos la fila en la tabla de base de datos
       const { data, error } = await supabase
         .from('catalogs')
         .insert([newCatalog])
