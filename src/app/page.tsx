@@ -12,6 +12,7 @@ import {
 import ChatInterface from '@/components/ui/ChatInterface';
 import HistoryPanel from '@/components/ui/HistoryPanel';
 import AdminPanel from '@/components/ui/AdminPanel';
+import ProductPanel from '@/components/ui/ProductPanel';
 import { 
   Briefcase, 
   Wrench, 
@@ -31,7 +32,7 @@ import {
 
 export default function Home() {
   const [currentRole, setCurrentRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
-  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'administracion'>('consulta');
+  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'administracion' | 'productos'>('consulta');
   const [isAdminMode, setIsAdminMode] = useState(false);
   
   // Auth state
@@ -475,6 +476,18 @@ export default function Home() {
             </button>
             
             <button
+              onClick={() => setActiveTab('productos')}
+              className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
+                activeTab === 'productos'
+                  ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Catálogo de Equipos</span>
+            </button>
+            
+            <button
               onClick={() => setActiveTab('historial')}
               className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
                 activeTab === 'historial'
@@ -514,6 +527,10 @@ export default function Home() {
         <div className="mt-6">
           {activeTab === 'consulta' && (
             <ChatInterface currentRole={currentRole} />
+          )}
+
+          {activeTab === 'productos' && (
+            <ProductPanel currentRole={currentRole} />
           )}
 
           {activeTab === 'historial' && (

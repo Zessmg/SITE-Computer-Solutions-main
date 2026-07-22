@@ -2,59 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, CheckCircle2, MessageSquare, AlertCircle, Sparkles, Server, Laptop, Network, HardDrive, ShieldCheck } from 'lucide-react';
-import { ChatMessage, insertHistoryRecord } from '@/lib/supabase/client';
-
-// Simulated dataset for IA engine replies based on legacy products database
-const PRODUCT_TEMPLATES = [
-  {
-    keywords: ['servidor', 'server', 'sitecore', 'rack'],
-    sku: 'SRV-EPIC-2U',
-    name: 'Servidor Enterprise Rack SiteCore 2U X9',
-    category: 'Servidores',
-    price: 4850.00,
-    stock: 14,
-    warehouse: 'Almacén Central A-12',
-    description: 'Servidor de doble socket diseñado para virtualización masiva (VMware/Proxmox) y bases de datos críticas SQL.',
-    specs: '2x AMD EPYC 9654 (192 Cores total @ 3.7GHz), 512GB DDR5 ECC Reg, 4x 3.84TB NVMe SSD RAID 10.',
-    solution: 'Fórmula Firmware: v4.18.9-release-stable. Solución típica: Para error BMC LED 0xAF, verificar bahía de ventilación posterior #3.'
-  },
-  {
-    keywords: ['laptop', 'computadora', 'titanbook', 'workstation'],
-    sku: 'LTP-PRO-16X',
-    name: 'Workstation Laptop TitanBook Pro 16',
-    category: 'Workstations',
-    price: 2499.00,
-    stock: 28,
-    warehouse: 'Almacén Norte B-04',
-    description: 'Workstation móvil ultra-resistente en aleación de titanio y magnesio con certificación militar MIL-STD-810H.',
-    specs: 'Intel Core i9-14900HX (24 Núcleos @ 5.8 GHz), 64GB DDR5, 2TB PCIe Gen4 NVMe, NVIDIA RTX 4080 12GB VRAM.',
-    solution: 'Fórmula Firmware: BIOS v1.14 - EC v0.9. Solución típica: Para parpadeo por Thunderbolt, actualizar a v552.12.'
-  },
-  {
-    keywords: ['switch', 'red', 'optical', 'fibra', 'networking'],
-    sku: 'SWT-FIBER-48P',
-    name: 'Switch de Red Óptica SwitchNet 48P SFP+',
-    category: 'Networking',
-    price: 1890.00,
-    stock: 9,
-    warehouse: 'Almacén Redes C-01',
-    description: 'Switch L3 totalmente administrable con 48 puertos 1GbE RJ45 PoE+ (740W) y 4 puertos uplink 10G SFP+.',
-    specs: 'Marvell ARMADA Dual-Core 1.6GHz, 4GB Buffer, 1GB Flash. 4 Uplinks 10G SFP+.',
-    solution: 'Fórmula Firmware: SiteOS v12.4.2-Build88. Solución típica: Reemplazar transceptor de terceros por Site-Optics SR-10G.'
-  },
-  {
-    keywords: ['nas', 'almacenamiento', 'datavault', 'discos'],
-    sku: 'NAS-ENTERPRISE-8B',
-    name: 'Almacenamiento Redundante DataVault NAS 8-Bay',
-    category: 'Almacenamiento',
-    price: 3150.00,
-    stock: 5,
-    warehouse: 'Almacén Central A-05',
-    description: 'Matriz NAS de 8 bahías hot-swap con ZFS preconfigurado y snapshots inmutables anti-ransomware.',
-    specs: 'Intel Xeon E-2336 6-Core, 32GB DDR4 ECC, 8x Bahías 3.5" SAS/SATA, encriptación AES-256 por hardware.',
-    solution: 'Fórmula Firmware: DataOS ZFS v5.0.1. Solución típica: Reemplazar disco dañado en caliente y ejecutar zpool replace.'
-  }
-];
+import { ChatMessage, insertHistoryRecord, fetchProducts } from '@/lib/supabase/client';
 
 interface ChatInterfaceProps {
   currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
@@ -95,25 +43,46 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
     setInputText('');
     setIsLoading(true);
 
+    // Fetch master products dynamically
+    let productsList: any[] = [];
+    try {
+      productsList = await fetchProducts();
+    } catch (err) {
+      console.error('Error fetching products for chatbot:', err);
+    }
+
     // Simulate AI response delay
     setTimeout(() => {
       const queryLower = userMessage.text.toLowerCase();
-      let matchedProduct = PRODUCT_TEMPLATES.find(p => 
-        p.keywords.some(kw => queryLower.includes(kw)) || queryLower.includes(p.sku.toLowerCase())
+      let matchedProduct = productsList.find(p => 
+        queryLower.includes(p.sku.toLowerCase()) || 
+        queryLower.includes(p.name.toLowerCase()) ||
+        p.category.toLowerCase().includes(queryLower) ||
+        (p.brand && queryLower.includes(p.brand.toLowerCase()))
       );
 
       let responseText = '';
       let metadata: ChatMessage['metadata'] = undefined;
 
       if (matchedProduct) {
+        // Build readable specs
+        const specsText = typeof matchedProduct.specs === 'string'
+          ? matchedProduct.specs
+          : matchedProduct.specs 
+          ? `${matchedProduct.specs.processor || ''}, ${matchedProduct.specs.ram || ''}, ${matchedProduct.specs.storage || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
+          : 'N/A';
+
+        const solutionText = matchedProduct.support_info?.solution || matchedProduct.support_info?.solution_steps || 'Contactar soporte técnico';
+        const warehouseText = matchedProduct.warehouse_location || matchedProduct.warehouse || 'Almacén Central';
+
         responseText = `He localizado el equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) en nuestra base de conocimientos. `;
         
         if (currentRole === 'vendedor') {
-          responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${matchedProduct.warehouse}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('en-US', {minimumFractionDigits: 2})} USD**.`;
+          responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${warehouseText}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('en-US', {minimumFractionDigits: 2})} USD**.`;
         } else if (currentRole === 'soporte') {
-          responseText += `La ficha de diagnóstico indica: **${matchedProduct.solution}** (Versión de Firmware recomendada: \`${matchedProduct.sku.startsWith('SRV') ? 'v4.18.9' : matchedProduct.sku.startsWith('LTP') ? 'BIOS v1.14' : 'v12.4.2'}\`).`;
+          responseText += `La ficha de diagnóstico indica: **${solutionText}** (Versión de Firmware recomendada: \`${matchedProduct.support_info?.firmware_ver || 'v1.0'}\`).`;
         } else {
-          responseText += `Especificaciones a nivel técnico: **${matchedProduct.specs}**`;
+          responseText += `Especificaciones a nivel técnico: **${specsText}**`;
         }
 
         metadata = {
@@ -121,9 +90,9 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           name: matchedProduct.name,
           price: matchedProduct.price,
           stock: matchedProduct.stock,
-          warehouse: matchedProduct.warehouse,
-          specs: matchedProduct.specs,
-          solution: matchedProduct.solution
+          warehouse: warehouseText,
+          specs: specsText,
+          solution: solutionText
         };
       } else {
         responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
