@@ -308,28 +308,28 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
       {/* Suggested prompts */}
       <div className="px-6 py-2.5 bg-slate-950/30 border-t border-slate-850 flex gap-2 overflow-x-auto text-xs whitespace-nowrap scrollbar-none">
         <button
-          onClick={() => setInputText('¿Qué stock tenemos del servidor de doble socket AMD?')}
+          onClick={() => setInputText('¿Cuál es el precio y stock de la laptop NovaByte NB-A14X?')}
           className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
         >
-          🔍 Consultar Servidor
+          🔍 Stock de Laptop NB-A14X
         </button>
         <button
-          onClick={() => setInputText('¿Ficha de soporte para error 0xAF en switch o servidor?')}
+          onClick={() => setInputText('¿Qué especificaciones y precio tiene la laptop VX-Pro15?')}
           className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
         >
-          🛠️ Reporte de Error 0xAF
+          💻 Specs de Laptop VX-Pro15
         </button>
         <button
-          onClick={() => setInputText('¿Precio y GPU de la laptop TitanBook?')}
+          onClick={() => setInputText('¿Cuál es el precio del equipo de escritorio ZC-Office2?')}
           className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
         >
-          💻 Specs de Workstation
+          🖥️ Computadora ZC-Office2
         </button>
         <button
-          onClick={() => setInputText('¿Qué almacenamiento NAS de 8 bahías recomiendan?')}
+          onClick={() => setInputText('¿Qué precio y stock tenemos de la tarjeta gráfica NB-RTX90?')}
           className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
         >
-          💾 Consultar NAS DataVault
+          🎮 Tarjeta Gráfica RTX90
         </button>
       </div>
 
