@@ -243,6 +243,28 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                 </div>
               </div>
 
+              {selectedRecord.metadata && selectedRecord.metadata.price !== undefined && (
+                <div className="bg-slate-950/60 p-4.5 rounded-2xl border border-slate-850 space-y-3.5 shadow-inner">
+                  <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider block">Valores Comerciales Ofrecidos</span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <span className="text-[10px] text-slate-500 block">Equipo Cotizado</span>
+                      <strong className="text-xs text-slate-200 font-semibold block mt-0.5 truncate">
+                        {selectedRecord.metadata.name || 'N/A'}
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-mono block mt-0.5">SKU: {selectedRecord.metadata.sku}</span>
+                    </div>
+                    <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-2.5 flex flex-col justify-center items-center text-center">
+                      <span className="text-[9px] text-cyan-400 font-medium block uppercase leading-none">Precio Ofrecido</span>
+                      <strong className="text-sm font-extrabold text-cyan-400 mt-1.5 leading-none">
+                        ${Number(selectedRecord.metadata.price).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </strong>
+                      <span className="text-[8px] text-slate-500 block mt-1 font-mono uppercase">MXN</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <span className="text-xs text-slate-500 block mb-1.5 font-medium">Pregunta del Colaborador:</span>
                 <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 text-sm text-slate-100 italic">

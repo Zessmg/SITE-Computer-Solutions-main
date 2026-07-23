@@ -69,7 +69,14 @@ const SEED_HISTORY: HistoryRecord[] = [
     client: 'Banco Azteca / Ventas',
     query: 'Necesitamos cotización de 5 servidores de doble procesador para virtualización.',
     response: 'Asistente: Servidor Enterprise Rack SiteCore 2U X9 con 2x AMD EPYC (192 núcleos totales), 512GB RAM, 4x 3.84TB NVMe. Precio unitario: $97,000.00 MXN. Stock disponible: 14 unidades.',
-    status: 'Aprobada'
+    status: 'Aprobada',
+    metadata: {
+      sku: 'SRV-EPIC-2U',
+      name: 'Servidor Enterprise Rack SiteCore 2U X9',
+      price: 97000.00,
+      stock: 14,
+      warehouse: 'Almacén Central'
+    }
   },
   {
     id: 'h2',
@@ -77,7 +84,14 @@ const SEED_HISTORY: HistoryRecord[] = [
     client: 'Walmart Redes / Soporte',
     query: 'El switch óptico de fibra en sucursal 47 muestra advertencia en el puerto SFP+.',
     response: 'Asistente: Alerta por transceptor SFP+ de terceros en canal 47. Solución: Inspeccionar y sustituir con transceptor certificado Site-Optics SR-10G. Firmware recomendado: SiteOS v12.4.2.',
-    status: 'Pendiente'
+    status: 'Pendiente',
+    metadata: {
+      sku: 'SWT-FIBER-48P',
+      name: 'Switch de Red Optica SwitchNet 48P SFP+',
+      price: 37800.00,
+      stock: 9,
+      warehouse: 'Almacén Noreste'
+    }
   },
   {
     id: 'h3',
@@ -85,7 +99,14 @@ const SEED_HISTORY: HistoryRecord[] = [
     client: 'Femsa TI / Técnico',
     query: '¿Cuáles son las dimensiones físicas y consumo TDP de la laptop TitanBook Pro 16?',
     response: 'Asistente: Dimensiones: 356 x 248 x 19.9 mm. Peso: 2.15 kg. Consumo TDP: Adaptador GaN 280W Smart Charge. GPU dedicada NVIDIA RTX 4080.',
-    status: 'Aprobada'
+    status: 'Aprobada',
+    metadata: {
+      sku: 'LTP-PRO-16X',
+      name: 'Workstation Laptop TitanBook Pro 16',
+      price: 49500.00,
+      stock: 22,
+      warehouse: 'Almacén Central'
+    }
   },
   {
     id: 'h4',
@@ -93,7 +114,14 @@ const SEED_HISTORY: HistoryRecord[] = [
     client: 'Cemex Corp / Ventas',
     query: 'Cotizar almacenamiento NAS con soporte para cifrado por hardware.',
     response: 'Asistente: Almacenamiento DataVault NAS 8-Bay, Xeon E-2336 6-Core, 32GB RAM, encriptación AES-256 por hardware. Precio: $63,000.00 MXN.',
-    status: 'Rechazada'
+    status: 'Rechazada',
+    metadata: {
+      sku: 'NAS-ENTERPRISE-8B',
+      name: 'Almacenamiento Redundante DataVault NAS 8-Bay',
+      price: 63000.00,
+      stock: 5,
+      warehouse: 'Almacén Central'
+    }
   }
 ];
 
