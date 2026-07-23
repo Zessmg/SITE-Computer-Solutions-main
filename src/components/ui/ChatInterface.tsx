@@ -111,7 +111,15 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           solution: solutionText
         };
       } else {
-        responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+        const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
+        const cleanQuery = queryLower.replace(/[¡!.,?¿]/g, '').trim();
+        const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+
+        if (isGreeting) {
+          responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+        } else {
+          responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+        }
       }
 
       const assistantMessage: ChatMessage = {
