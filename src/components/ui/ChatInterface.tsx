@@ -22,10 +22,14 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
   const [approvedId, setApprovedId] = useState<string | null>(null);
   const [quotedSkus, setQuotedSkus] = useState<string[]>([]);
   const [quotingState, setQuotingState] = useState<{
-    step: 'idle' | 'waiting_client_name' | 'adding_products';
+    step: 'idle' | 'waiting_client_name' | 'adding_products' | 'confirming_quantity_change';
     clientName?: string;
     selectedProducts: any[];
     pendingQuantity?: number;
+    pendingQuantityChange?: {
+      productSku: string;
+      newQuantity: number;
+    };
   }>({
     step: 'idle',
     selectedProducts: []
@@ -73,9 +77,86 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           .trim();
 
       const cleanQuery = normalizeText(userMessage.text);
+      let activeStep = quotingState.step;
 
       // --- WIZARD COTIZACIONES FLOW ---
-      if (quotingState.step === 'waiting_client_name') {
+      if (activeStep === 'confirming_quantity_change') {
+        if (cleanQuery === 'si' || cleanQuery === 'sí') {
+          const skuToChange = quotingState.pendingQuantityChange?.productSku;
+          const newQty = quotingState.pendingQuantityChange?.newQuantity || 1;
+          
+          const updatedProducts = quotingState.selectedProducts.map(p => {
+            if (p.sku === skuToChange) {
+              return { ...p, quantity: newQty };
+            }
+            return p;
+          });
+
+          // Calculate total and compatibility
+          const totalVal = updatedProducts.reduce((acc, p) => acc + (p.price * (p.quantity || 1)), 0);
+          
+          const hasMotherboard = updatedProducts.some(p => p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard'));
+          const hasRam = updatedProducts.some(p => p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria'));
+          
+          let compatibilityStatus = 'OK';
+          if (hasMotherboard && hasRam) {
+            const isD5Motherboard = updatedProducts.some(p => (p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard')) && p.description.toLowerCase().includes('ddr5'));
+            const isD5Ram = updatedProducts.some(p => (p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria')) && p.description.toLowerCase().includes('ddr5'));
+            
+            const isD4Motherboard = updatedProducts.some(p => (p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard')) && p.description.toLowerCase().includes('ddr4'));
+            const isD4Ram = updatedProducts.some(p => (p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria')) && p.description.toLowerCase().includes('ddr4'));
+
+            if ((isD5Motherboard && isD4Ram) || (isD4Motherboard && isD5Ram)) {
+              compatibilityStatus = 'Incompatibilidad DDR4/DDR5';
+            }
+          }
+
+          const currencySymbol = 'MXN';
+          const itemsText = updatedProducts
+            .map(p => `*   **${p.quantity || 1}x ${p.name}** - $${p.price.toLocaleString('es-MX')} ${currencySymbol} c/u ($${(p.price * (p.quantity || 1)).toLocaleString('es-MX')} ${currencySymbol})`)
+            .join('\n');
+
+          const quoteId = 'COT-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+          const finalCard: ChatMessage = {
+            id: quoteId,
+            sender: 'assistant',
+            text: `📋 **RESUMEN DE COTIZACIÓN AUTOGENERADA**\n` +
+                  `**ID Cotización:** \`${quoteId}\`\n` +
+                  `**Cliente:** \`${quotingState.clientName || 'General'}\`\n` +
+                  `**Moneda:** MXN\n` +
+                  `**Vigencia:** 30 días naturales\n\n` +
+                  `**Equipos Solicitados:**\n${itemsText}\n\n` +
+                  `**Compatibilidad de Componentes:** ${compatibilityStatus === 'OK' ? '✅ Compatible' : '❌ Conflicto Detectado: ' + compatibilityStatus}\n\n` +
+                  `💰 **VALOR TOTAL: $${totalVal.toLocaleString('es-MX')} MXN**`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            metadata: {
+              clientName: quotingState.clientName || 'General',
+              total: totalVal,
+              products: updatedProducts,
+              isQuotationCard: true
+            }
+          };
+
+          setQuotingState({
+            step: 'idle',
+            selectedProducts: []
+          });
+
+          setMessages(prev => [...prev, finalCard]);
+          setIsLoading(false);
+          return;
+        } else {
+          // Cancelar confirmación de cambio de cantidad y proceder al paso estándar
+          activeStep = 'adding_products';
+          setQuotingState(prev => ({
+            ...prev,
+            step: 'adding_products',
+            pendingQuantityChange: undefined
+          }));
+        }
+      }
+
+      if (activeStep === 'waiting_client_name') {
         const clientNameInput = userMessage.text.trim();
         const cleanNameInput = normalizeText(clientNameInput).replace(/[^a-z0-9]/g, '');
         
@@ -121,9 +202,35 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         setIsLoading(false);
         return;
       }
+      if (activeStep === 'adding_products') {
+        // Si el usuario ingresa un número simple y ya hay productos en la lista, asumimos que quiere cambiar la cantidad
+        const isSimpleNumber = userMessage.text.trim().match(/^(\d+)$/);
+        if (isSimpleNumber && quotingState.selectedProducts.length > 0) {
+          const newQty = parseInt(isSimpleNumber[1], 10);
+          const targetProduct = quotingState.selectedProducts[quotingState.selectedProducts.length - 1];
+          
+          setQuotingState(prev => ({
+            ...prev,
+            step: 'confirming_quantity_change',
+            pendingQuantityChange: {
+              productSku: targetProduct.sku,
+              newQuantity: newQty
+            }
+          }));
 
-      if (quotingState.step === 'adding_products') {
-        if (cleanQuery === 'listo' || cleanQuery === 'terminar' || cleanQuery === 'calcular') {
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `¿Deseas cambiar la cantidad de **${targetProduct.name}** a **${newQty} unidades** y volver a cotizar?\n\n*   Responde **'Sí'** para confirmar y volver a cotizar.\n*   Escribe cualquier otra cosa para continuar editando.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        const wantsToFinish = ['no', 'no gracias', 'ninguno', 'listo', 'terminar', 'calcular', 'n'].includes(cleanQuery) && !quotingState.pendingQuantity;
+        if (wantsToFinish) {
           if (quotingState.selectedProducts.length === 0) {
             const assistantMessage: ChatMessage = {
               id: 'm-' + Math.random().toString(36).substr(2, 9),
