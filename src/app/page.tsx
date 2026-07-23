@@ -43,7 +43,7 @@ export default function Home() {
   
   // Dashboard Metrics State
   const [metrics, setMetrics] = useState({
-    totalProducts: 0,
+    sentQuotes: 0,
     totalStock: 0,
     pendingQuotes: 0,
     pendingCatalogs: 0,
@@ -98,12 +98,13 @@ export default function Home() {
         const catalogs = await fetchCatalogs();
         const products = await fetchProducts('Todos', '');
         
+        const sentQuotes = history.length;
         const pendingQuotes = history.filter(h => h.status === 'Pendiente').length;
         const pendingCatalogs = catalogs.filter(c => c.status === 'Pendiente').length;
         const totalStock = products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
         
         setMetrics({
-          totalProducts: products.length,
+          sentQuotes,
           totalStock,
           pendingQuotes,
           pendingCatalogs,
@@ -444,8 +445,8 @@ export default function Home() {
           {/* Metrics Panel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-[540px] shrink-0">
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Modelos Activos</span>
-              <strong className="text-lg font-bold text-slate-200 mt-1 block">{metrics.totalProducts}</strong>
+              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Cotizaciones Enviadas</span>
+              <strong className="text-lg font-bold text-slate-200 mt-1 block">{metrics.sentQuotes}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
               <span className="text-[10px] text-slate-500 font-semibold block uppercase">Stock Total</span>
