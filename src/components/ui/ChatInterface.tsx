@@ -98,15 +98,33 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         const solutionText = matchedProduct.support_info?.solution || matchedProduct.support_info?.solution_steps || 'Contactar soporte técnico';
         const warehouseText = matchedProduct.warehouse_location || matchedProduct.warehouse || 'Almacén Central';
 
-        responseText = `He localizado el equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) en nuestra base de conocimientos. `;
-        
-        if (currentRole === 'vendedor') {
-          responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${warehouseText}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN**.`;
-        } else if (currentRole === 'soporte') {
-          responseText += `La ficha de diagnóstico indica: **${solutionText}** (Versión de Firmware recomendada: \`${matchedProduct.support_info?.firmware_ver || 'v1.0'}\`).`;
+        if (cleanQuery.includes('compatib') || cleanQuery.includes('compatible')) {
+          responseText = `**Compatibilidad Verificada**: El componente **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es compatible. Si estás validando la memoria RAM Vertex/Quantum DDR5 con el socket LGA1700 de la tarjeta madre Z790, ten en cuenta que requiere versión de BIOS >= v2.3 para un arranque y frecuencias de memoria estables.`;
+        } else if (cleanQuery.includes('garant')) {
+          responseText = `El equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) cuenta con una póliza de garantía oficial del fabricante por un plazo de **${matchedProduct.specs?.warranty_months || 12} meses**. La póliza cubre reemplazo directo y diagnóstico con Site Solutions.`;
+        } else if (cleanQuery.includes('manual')) {
+          responseText = `He localizado el manual técnico oficial y la guía de instalación de fábrica para el modelo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`). Puedes descargar la documentación técnica adjunta.`;
         } else {
-          responseText += `Especificaciones a nivel técnico: **${specsText}**`;
+          responseText = `He localizado el equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) en nuestra base de conocimientos. `;
+          
+          if (currentRole === 'vendedor') {
+            responseText += `Actualmente contamos con un stock comercial de **${matchedProduct.stock} unidades** ubicadas en el **${warehouseText}**. El precio de lista corporativo es **$${matchedProduct.price.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN**.`;
+          } else if (currentRole === 'soporte') {
+            responseText += `La ficha de diagnóstico indica: **${solutionText}** (Versión de Firmware recomendada: \`${matchedProduct.support_info?.firmware_ver || 'v1.0'}\`).`;
+          } else {
+            responseText += `Especificaciones a nivel técnico: **${specsText}**`;
+          }
         }
+
+        const manualName = cleanQuery.includes('manual') 
+          ? `Manual_Usuario_${matchedProduct.sku}.pdf`
+          : cleanQuery.includes('garant')
+          ? `Poliza_Garantia_SiteSolutions.pdf`
+          : cleanQuery.includes('compatib')
+          ? `Ficha_Tecnica_Compatibilidad_${matchedProduct.sku}.pdf`
+          : `Ficha_Tecnica_${matchedProduct.sku}.pdf`;
+
+        const manualUrl = `/documents?file=${manualName}`;
 
         metadata = {
           sku: matchedProduct.sku,
@@ -115,17 +133,29 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           stock: matchedProduct.stock,
           warehouse: warehouseText,
           specs: specsText,
-          solution: solutionText
+          solution: solutionText,
+          manual_url: manualUrl,
+          manual_name: manualName
         };
       } else {
         const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen'];
         
-        // Verificar si pregunta por precio genérico sin producto
+        // Verificar consultas sin producto especificado
         const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
+        const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
+        const isWarrantyQuery = cleanQuery.includes('garant');
+        const isManualQuery = cleanQuery.includes('manual');
+        
         const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
 
         if (isPriceQuery) {
           responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
+        } else if (isCompatQuery) {
+          responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
+        } else if (isWarrantyQuery) {
+          responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
+        } else if (isManualQuery) {
+          responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
         } else if (isListRequest && productsList.length > 0) {
           responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo maestro de Site Solutions:\n\n`;
           responseText += `| SKU | Producto | Precio Lista (MXN) | Stock |\n`;
@@ -192,8 +222,45 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col h-[650px] bg-slate-900/40 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-xl">
-      {/* Header */}
+    <div className="flex h-[650px] bg-slate-900/40 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-xl">
+      {/* Left Sidebar - Accesos Rápidos */}
+      <div className="w-52 shrink-0 bg-slate-950/40 border-r border-slate-800/80 p-5 flex flex-col hidden sm:flex">
+        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-4">ACCESOS RAPIDOS</span>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setInputText('Ficha técnica del equipo NovaByte NB-A14X')}
+            className="w-full text-left px-4 py-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98] shadow-sm"
+          >
+            Ficha tecnica
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputText('¿Es la memoria RAM Quantum Line QL-DDR5-32 compatible con la placa TechCore TC-Z790?')}
+            className="w-full text-left px-4 py-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98] shadow-sm"
+          >
+            Compatibilidad
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputText('¿Cuál es la garantía y cobertura para el procesador Ferrotech FT-i9X-12C?')}
+            className="w-full text-left px-4 py-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98] shadow-sm"
+          >
+            Garantias
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputText('¿Dónde encuentro el manual de usuario o guía de la laptop Vertex Systems VX-Pro15?')}
+            className="w-full text-left px-4 py-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98] shadow-sm"
+          >
+            Manuales
+          </button>
+        </div>
+      </div>
+
+      {/* Right Content - Chat area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
       <div className="flex justify-between items-center px-6 py-4 bg-slate-950/60 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -229,6 +296,26 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                 : 'bg-slate-950/70 text-slate-200 border border-slate-800/80 rounded-bl-none shadow-lg'
             }`}>
               <div className="text-sm leading-relaxed whitespace-pre-line">{msg.text}</div>
+              
+              {/* Technical Attachment Card */}
+              {msg.sender === 'assistant' && msg.metadata && msg.metadata.manual_url && (
+                <div className="mt-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400 flex items-center gap-2.5 shadow-sm">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider block mb-0.5">Adjunto Técnico</span>
+                    <a 
+                      href={msg.metadata.manual_url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="underline font-mono font-medium hover:text-amber-300 block truncate"
+                    >
+                      {msg.metadata.manual_name || 'Ficha_Tecnica_General.pdf'}
+                    </a>
+                  </div>
+                </div>
+              )}
               
               {/* Product metadata card if assistant reply has info */}
               {msg.sender === 'assistant' && msg.metadata && (
@@ -305,34 +392,6 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested prompts */}
-      <div className="px-6 py-2.5 bg-slate-950/30 border-t border-slate-850 flex gap-2 overflow-x-auto text-xs whitespace-nowrap scrollbar-none">
-        <button
-          onClick={() => setInputText('¿Cuál es el precio y stock de la laptop NovaByte NB-A14X?')}
-          className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
-        >
-          🔍 Stock de Laptop NB-A14X
-        </button>
-        <button
-          onClick={() => setInputText('¿Qué especificaciones y precio tiene la laptop VX-Pro15?')}
-          className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
-        >
-          💻 Specs de Laptop VX-Pro15
-        </button>
-        <button
-          onClick={() => setInputText('¿Cuál es el precio del equipo de escritorio ZC-Office2?')}
-          className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
-        >
-          🖥️ Computadora ZC-Office2
-        </button>
-        <button
-          onClick={() => setInputText('¿Qué precio y stock tenemos de la tarjeta gráfica NB-RTX90?')}
-          className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3.5 py-1.5 text-slate-300 transition-all active:scale-95"
-        >
-          🎮 Tarjeta Gráfica RTX90
-        </button>
-      </div>
-
       {/* Input area */}
       <form onSubmit={handleSend} className="p-4 bg-slate-950/60 border-t border-slate-800 flex gap-3">
         <input
@@ -351,6 +410,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           <span>Enviar</span>
         </button>
       </form>
+      </div>
     </div>
   );
 }
