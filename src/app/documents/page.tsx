@@ -168,7 +168,32 @@ export default function DocumentViewer() {
       solution: 'Actualizar la BIOS a la versión >= v2.3 para un arranque y frecuencias de memoria estables.',
       firmware_ver: 'v2.3.0'
     }
-  } : null);
+  } : {
+    sku: 'SITE-SOLUTIONS-GEN',
+    name: 'Garantía Estándar Site Solutions',
+    category: 'Equipamiento de TI',
+    brand: 'Site Solutions',
+    price: 0,
+    stock: 99,
+    warehouse_location: 'Almacén Central',
+    description: 'Póliza de garantía de hardware y cobertura de soporte corporativo estándar.',
+    specs: {
+      processor: 'Compatibilidad universal Intel/AMD',
+      ram: 'Memorias certificadas DDR4 y DDR5',
+      storage: 'Unidades de estado sólido NVMe/SATA',
+      graphics: 'Soporte PCIe estándar',
+      power_consumption_tdp: 'Voltajes de alimentación estándar',
+      operating_temp: '0°C - 50°C',
+      dimensions: 'Medidas de chasis estándar',
+      weight: 'Variable según configuración',
+      warranty_months: 12
+    },
+    support_info: {
+      common_issue: 'Consultas de configuración general.',
+      solution: 'Consulte al equipo de Site Solutions para soporte avanzado.',
+      firmware_ver: 'v1.0'
+    }
+  });
 
   return (
     <div className="min-h-screen bg-[#070b19] print:bg-white text-slate-100 print:text-slate-900 pb-12 font-sans">
