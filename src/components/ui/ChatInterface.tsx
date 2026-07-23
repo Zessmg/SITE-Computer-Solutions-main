@@ -76,16 +76,45 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
       // --- WIZARD COTIZACIONES FLOW ---
       if (quotingState.step === 'waiting_client_name') {
+        const clientNameInput = userMessage.text.trim();
+        const cleanNameInput = normalizeText(clientNameInput).replace(/[^a-z0-9]/g, '');
+        
+        const hasNumbers = /\d/.test(clientNameInput);
+        const isEmpty = clientNameInput.length < 2;
+        
+        // Verificar que el nombre no contenga o sea similar a un SKU o nombre de producto de la base de datos
+        const isComponent = productsList.some(p => {
+          const skuClean = normalizeText(p.sku).replace(/[^a-z0-9]/g, '');
+          const nameClean = normalizeText(p.name).replace(/[^a-z0-9]/g, '');
+          return cleanNameInput.includes(skuClean) || cleanNameInput.includes(nameClean) || skuClean.includes(cleanNameInput);
+        });
+
+        // Términos genéricos de tecnología que no permitimos como nombre de cliente
+        const techWords = ['ram', 'laptop', 'motherboard', 'mother', 'tarjeta', 'madre', 'procesador', 'cpu', 'gpu', 'disco', 'ssd', 'switch', 'servidor', 'server', 'memoria'];
+        const isTechTerm = techWords.some(tw => cleanNameInput.includes(tw));
+
+        if (isEmpty || hasNumbers || isComponent || isTechTerm) {
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `❌ **Nombre de cliente no aceptado.** Por favor, proporciona un nombre de persona o empresa real para continuar.\n\n*   No puede contener números.\n*   No puede ser el nombre o SKU de un componente del catálogo (ej: \`NB-A14X\`, \`TC-Z690\`, \`RAM\`, \`Laptop\`, etc.).\n*   Se permiten letras, acentos y caracteres especiales (ej: \`Cecilia Martínez\`).`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
         setQuotingState(prev => ({
           ...prev,
           step: 'adding_products',
-          clientName: userMessage.text.trim()
+          clientName: clientNameInput
         }));
 
         const assistantMessage: ChatMessage = {
           id: 'm-' + Math.random().toString(36).substr(2, 9),
           sender: 'assistant',
-          text: `Cliente registrado: **${userMessage.text.trim()}**.\n\nPor favor, escribe el **SKU** o nombre de los productos que deseas agregar, uno por uno. Cuando termines, haz clic en **'Finalizar Cotización'**.\n\n💡 **Guía de SKU Rápidos de nuestro catálogo (copia y pega)**:\n*   **Laptops**: \`NB-A14X\` (NovaByte NB-A14X), \`VX-Pro15\` (Vertex Systems VX-Pro15)\n*   **Tarjetas Madre**: \`TC-Z790\` (TechCore TC-Z790 - *Soporta DDR5*), \`TC-ITX-Mini\` (TechCore TC-ITX-Mini - *Soporta DDR4*)\n*   **Memorias RAM**: \`QL-DDR5-32\` (Quantum Line DDR5), \`OB-DDR4-16\` (OmniBytes DDR4)\n*   **Procesadores/GPUs**: \`FT-i9X-12C\` (Ferrotech CPU), \`NB-RTX90\` (NovaByte GPU)\n\n⚠️ **Reglas de Compatibilidad de RAM y Placa**:\n*   ✅ **Combinación Válida**: Placa DDR5 (\`TC-Z790\`) + Memoria DDR5 (\`QL-DDR5-32\`)\n*   ❌ **Combinación Inválida (Conflicto)**: Placa DDR5 (\`TC-Z790\`) + Memoria DDR4 (\`OB-DDR4-16\`)`,
+          text: `Cliente registrado: **${clientNameInput}**.\n\nPor favor, escribe el **SKU** o nombre de los productos que deseas agregar, uno por uno. Cuando termines, haz clic en **'Finalizar Cotización'**.\n\n💡 **Guía de SKU Rápidos de nuestro catálogo (copia y pega)**:\n*   **Laptops**: \`NB-A14X\` (NovaByte NB-A14X), \`VX-Pro15\` (Vertex Systems VX-Pro15)\n*   **Tarjetas Madre**: \`TC-Z690\` (TechCore TC-Z690 - *Soporta DDR5*), \`TC-ITX-Mini\` (TechCore TC-ITX-Mini - *Soporta DDR4*)\n*   **Memorias RAM**: \`QL-DDR5-32\` (Quantum Line DDR5), \`OB-DDR4-16\` (OmniBytes DDR4)\n*   **Procesadores/GPUs**: \`FT-i9X-12C\` (Ferrotech CPU), \`NB-RTX90\` (NovaByte GPU)\n\n⚠️ **Reglas de Compatibilidad de RAM y Placa**:\n*   ✅ **Combinación Válida**: Placa DDR5 (\`TC-Z690\`) + Memoria DDR5 (\`QL-DDR5-32\`)\n*   ❌ **Combinación Inválida (Conflicto)**: Placa DDR5 (\`TC-Z690\`) + Memoria DDR4 (\`OB-DDR4-16\`)`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, assistantMessage]);
@@ -872,7 +901,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           onChange={(e) => setInputText(e.target.value)}
           placeholder={
             quotingState.step === 'waiting_client_name'
-              ? "Escribe el nombre del cliente..."
+              ? "Escribe el nombre del cliente (ej: Cecilia Martínez)..."
               : quotingState.step === 'adding_products'
               ? "Escribe un SKU (ej: NB-A14X) o nombre de producto a agregar..."
               : "Escribe una consulta técnica o comercial en lenguaje natural (ej. 'stock de servidores')..."
