@@ -64,7 +64,7 @@ export default function Home() {
           if (email.startsWith('admin') || email === 'geeraa123@gmail.com') {
             setCurrentRole('admin');
             setIsAdminMode(true);
-            setActiveTab('administracion');
+            setActiveTab('consulta');
           } else if (email.startsWith('soporte')) {
             setCurrentRole('soporte');
             setIsAdminMode(false);
