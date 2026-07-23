@@ -54,26 +54,33 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
     // Simulate AI response delay
     setTimeout(() => {
-      const queryLower = userMessage.text.toLowerCase();
+      // Función para normalizar texto (remueve acentos, mayúsculas y caracteres especiales)
+      const normalizeText = (str: string) => 
+        (str || '')
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[¡!.,?¿()]/g, "")
+          .trim();
+
+      const cleanQuery = normalizeText(userMessage.text);
+      const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
+
       let matchedProduct = productsList.find(p => {
-        const skuLower = p.sku.toLowerCase();
-        const nameLower = p.name.toLowerCase();
-        const categoryLower = p.category.toLowerCase();
-        const descriptionLower = (p.description || '').toLowerCase();
+        const skuNorm = normalizeText(p.sku);
+        const nameNorm = normalizeText(p.name);
+        const categoryNorm = normalizeText(p.category);
+        const descriptionNorm = normalizeText(p.description || '');
         
-        // Si la consulta contiene el SKU exacto
-        if (queryLower.includes(skuLower)) return true;
+        // Si la consulta contiene el SKU exacto normalizado
+        if (cleanQuery.includes(skuNorm)) return true;
         
-        // Extraer palabras clave de la consulta
-        const cleanQuery = queryLower.replace(/[¿?¡!.,()]/g, '');
-        const words = cleanQuery.split(/\s+/).filter(w => w.length > 2);
-        
-        // Verificar si alguna palabra coincide con nombre, categoría o descripción
+        // Verificar si alguna palabra clave coincide con nombre, SKU, categoría o descripción
         return words.some(word => 
-          nameLower.includes(word) || 
-          categoryLower.includes(word) ||
-          descriptionLower.includes(word) ||
-          skuLower.includes(word)
+          nameNorm.includes(word) || 
+          skuNorm.includes(word) ||
+          categoryNorm.includes(word) ||
+          descriptionNorm.includes(word)
         );
       });
 
@@ -111,14 +118,40 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           solution: solutionText
         };
       } else {
-        const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
-        const cleanQuery = queryLower.replace(/[¡!.,?¿]/g, '').trim();
-        const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+        const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen'];
+        
+        // Verificar si pregunta por precio genérico sin producto
+        const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
+        const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
 
-        if (isGreeting) {
-          responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+        if (isPriceQuery) {
+          responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
+        } else if (isListRequest && productsList.length > 0) {
+          responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo maestro de Site Solutions:\n\n`;
+          responseText += `| SKU | Producto | Precio Lista (MXN) | Stock |\n`;
+          responseText += `| :--- | :--- | :--- | :--- |\n`;
+          
+          // Mostrar los primeros 10 productos para no saturar la pantalla
+          const displayProducts = productsList.slice(0, 10);
+          displayProducts.forEach(p => {
+            const priceVal = p.price || 0;
+            responseText += `| \`${p.sku}\` | ${p.name} | $${Number(priceVal).toLocaleString('es-MX', {minimumFractionDigits: 2})} | ${p.stock} u. |\n`;
+          });
+
+          if (productsList.length > 10) {
+            responseText += `\n*Mostrando 10 de ${productsList.length} productos disponibles. Puedes consultar cualquier SKU específico en el chat para iniciar una cotización.*`;
+          } else {
+            responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles, existencias en almacenes o generar una cotización.*`;
+          }
         } else {
-          responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+          const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
+          const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+
+          if (isGreeting) {
+            responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+          } else {
+            responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+          }
         }
       }
 
