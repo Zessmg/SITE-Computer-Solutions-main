@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured, 
   fetchHistory, 
   fetchCatalogs, 
+  fetchProducts,
   getCurrentUser, 
   signInWithGoogle, 
   signOutUser 
@@ -42,9 +43,10 @@ export default function Home() {
   
   // Dashboard Metrics State
   const [metrics, setMetrics] = useState({
-    totalProducts: 4,
-    totalStock: 56,
-    pendingApprovals: 1,
+    totalProducts: 0,
+    totalStock: 0,
+    pendingQuotes: 0,
+    pendingCatalogs: 0,
     dbStatus: 'Local Fallback'
   });
 
@@ -94,12 +96,17 @@ export default function Home() {
       try {
         const history = await fetchHistory();
         const catalogs = await fetchCatalogs();
-        const pending = history.filter(h => h.status === 'Pendiente').length;
+        const products = await fetchProducts('Todos', '');
+        
+        const pendingQuotes = history.filter(h => h.status === 'Pendiente').length;
+        const pendingCatalogs = catalogs.filter(c => c.status === 'Pendiente').length;
+        const totalStock = products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
         
         setMetrics({
-          totalProducts: 4,
-          totalStock: 56,
-          pendingApprovals: pending,
+          totalProducts: products.length,
+          totalStock,
+          pendingQuotes,
+          pendingCatalogs,
           dbStatus: isSupabaseConfigured ? 'Supabase En Vivo' : 'Modo Fallback'
         });
       } catch (err) {
@@ -435,7 +442,7 @@ export default function Home() {
           </div>
 
           {/* Metrics Panel */}
-          <div className="grid grid-cols-2 gap-3 w-full md:w-80 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-[540px] shrink-0">
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
               <span className="text-[10px] text-slate-500 font-semibold block uppercase">Modelos Activos</span>
               <strong className="text-lg font-bold text-slate-200 mt-1 block">{metrics.totalProducts}</strong>
@@ -445,12 +452,12 @@ export default function Home() {
               <strong className="text-lg font-bold text-emerald-400 mt-1 block">{metrics.totalStock}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Revisiones Pendientes</span>
-              <strong className="text-lg font-bold text-amber-400 mt-1 block">{metrics.pendingApprovals}</strong>
+              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Pendientes por Aprobar</span>
+              <strong className="text-lg font-bold text-amber-400 mt-1 block">{metrics.pendingQuotes}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Aseguramiento</span>
-              <strong className="text-lg font-bold text-cyan-400 mt-1 block">100%</strong>
+              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Revisiones Catálogos</span>
+              <strong className="text-lg font-bold text-cyan-400 mt-1 block">{metrics.pendingCatalogs}</strong>
             </div>
           </div>
 
@@ -496,7 +503,7 @@ export default function Home() {
               }`}
             >
               <History className="w-4 h-4" />
-              <span>Panel de Trabajo / Historial</span>
+              <span>Autorización de Cotizaciones</span>
             </button>
             
             {/* Administration Tab is unlocked when Admin Mode is active */}
@@ -534,7 +541,7 @@ export default function Home() {
           )}
 
           {activeTab === 'historial' && (
-            <HistoryPanel />
+            <HistoryPanel currentUser={user} />
           )}
 
           {activeTab === 'administracion' && (

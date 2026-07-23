@@ -4,7 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { fetchHistory, updateApprovalStatus, HistoryRecord } from '@/lib/supabase/client';
 import { Search, Filter, Calendar, Eye, Check, X, ShieldAlert, Sparkles, Clock, AlertCircle } from 'lucide-react';
 
-export default function HistoryPanel() {
+interface HistoryPanelProps {
+  currentUser?: any;
+}
+
+export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('Todos');
@@ -31,14 +35,24 @@ export default function HistoryPanel() {
 
   const handleUpdateStatus = async (id: string, status: 'Aprobada' | 'Rechazada') => {
     try {
-      const success = await updateApprovalStatus(id, status);
+      const userEmail = currentUser?.email || 'supervisor@sitesolutions.com';
+      const success = await updateApprovalStatus(id, status, userEmail);
       if (success) {
-        // Refresh local state
+        // Refresh local state with metadata details
+        const approvedAt = new Date().toISOString();
         setHistory(prev => prev.map(item => 
-          item.id === id ? { ...item, status } : item
+          item.id === id ? { 
+            ...item, 
+            status,
+            metadata: { ...item.metadata, approvedBy: userEmail, approvedAt }
+          } : item
         ));
         if (selectedRecord && selectedRecord.id === id) {
-          setSelectedRecord(prev => prev ? { ...prev, status } : null);
+          setSelectedRecord(prev => prev ? { 
+            ...prev, 
+            status,
+            metadata: { ...prev.metadata, approvedBy: userEmail, approvedAt }
+          } : null);
         }
       }
     } catch (err) {
@@ -143,12 +157,19 @@ export default function HistoryPanel() {
                         {record.query}
                       </td>
                       <td className="px-6 py-4.5 text-center whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                            record.status === 'Aprobada' ? 'bg-emerald-400' : record.status === 'Rechazada' ? 'bg-rose-400' : 'bg-amber-400'
-                          }`} />
-                          {record.status}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              record.status === 'Aprobada' ? 'bg-emerald-400' : record.status === 'Rechazada' ? 'bg-rose-400' : 'bg-amber-400'
+                            }`} />
+                            {record.status}
+                          </span>
+                          {record.metadata?.approvedBy && (
+                            <span className="text-[10px] text-slate-500 font-mono block leading-none" title={`Decisión por: ${record.metadata.approvedBy}`}>
+                              {record.status === 'Aprobada' ? 'Por' : 'Por'}: {record.metadata.approvedBy.split('@')[0]}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
@@ -237,42 +258,56 @@ export default function HistoryPanel() {
               </div>
 
               {/* Status Section */}
-              <div className="flex items-center justify-between p-4 bg-slate-950/30 rounded-xl border border-slate-850">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-medium">Estado de Validación:</span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                    selectedRecord.status === 'Aprobada'
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : selectedRecord.status === 'Rechazada'
-                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  }`}>
-                    {selectedRecord.status}
-                  </span>
+              <div className="flex flex-col gap-4 p-4 bg-slate-950/30 rounded-xl border border-slate-850">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">Estado de Validación:</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                      selectedRecord.status === 'Aprobada'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : selectedRecord.status === 'Rechazada'
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {selectedRecord.status}
+                    </span>
+                  </div>
+
+                  {selectedRecord.status === 'Pendiente' ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleUpdateStatus(selectedRecord.id, 'Aprobada')}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-emerald-950/20"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Aprobar
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedRecord.id, 'Rechazada')}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-rose-950/20"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Rechazar
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                      <ShieldAlert className="w-4 h-4 text-cyan-500" />
+                      Decisión registrada e inmutable
+                    </span>
+                  )}
                 </div>
 
-                {selectedRecord.status === 'Pendiente' ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleUpdateStatus(selectedRecord.id, 'Aprobada')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-emerald-950/20"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Aprobar
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(selectedRecord.id, 'Rechazada')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-rose-950/20"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Rechazar
-                    </button>
+                {selectedRecord.metadata?.approvedBy && (
+                  <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-850 text-xs text-slate-400 space-y-1 mt-1">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Trazabilidad de Auditoría:</span>
+                    <div>
+                      <span className="font-semibold text-slate-350">Procesado por:</span> {selectedRecord.metadata.approvedBy}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-350">Fecha de decisión:</span> {new Date(selectedRecord.metadata.approvedAt).toLocaleString('es-MX')}
+                    </div>
                   </div>
-                ) : (
-                  <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                    <ShieldAlert className="w-4 h-4 text-cyan-500" />
-                    Decisión registrada e inmutable
-                  </span>
                 )}
               </div>
             </div>

@@ -242,12 +242,32 @@ export async function insertHistoryRecord(record: Omit<HistoryRecord, 'id'>): Pr
 /**
  * UPDATE: Cambiar el estado de aprobación de una consulta (Aprobada, Rechazada, Pendiente).
  */
-export async function updateApprovalStatus(id: string, status: 'Aprobada' | 'Pendiente' | 'Rechazada'): Promise<boolean> {
+export async function updateApprovalStatus(
+  id: string, 
+  status: 'Aprobada' | 'Pendiente' | 'Rechazada',
+  approvedBy: string = 'Sistema'
+): Promise<boolean> {
+  const approvedAt = new Date().toISOString();
+
   if (isSupabaseConfigured && supabase) {
     try {
+      // 1. Obtener el metadata actual para no pisar otros campos
+      const { data: record } = await supabase
+        .from('audit_history')
+        .select('metadata')
+        .eq('id', id)
+        .single();
+        
+      const currentMetadata = record?.metadata || {};
+      const updatedMetadata = {
+        ...currentMetadata,
+        approvedBy,
+        approvedAt
+      };
+
       const { error } = await supabase
         .from('audit_history')
-        .update({ status })
+        .update({ status, metadata: updatedMetadata })
         .eq('id', id);
       
       if (!error) return true;
@@ -257,11 +277,17 @@ export async function updateApprovalStatus(id: string, status: 'Aprobada' | 'Pen
     }
   }
 
-  // Fallback
+  // Fallback local storage
   const history = getLocalStorageData<HistoryRecord[]>('site_solutions_history', SEED_HISTORY);
   const index = history.findIndex(item => item.id === id);
   if (index !== -1) {
+    const currentMetadata = history[index].metadata || {};
     history[index].status = status;
+    history[index].metadata = {
+      ...currentMetadata,
+      approvedBy,
+      approvedAt
+    };
     setLocalStorageData('site_solutions_history', history);
     return true;
   }
