@@ -219,7 +219,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
               <div>
                 <span className="text-[10px] text-slate-500 block uppercase font-semibold font-mono">ID: {selectedRecord.id}</span>
                 <h3 className="text-sm font-semibold text-slate-100">
-                  Detalle de Consulta de Auditoría
+                  Detalle de la Cotización
                 </h3>
               </div>
               <button
@@ -234,7 +234,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="bg-slate-950/50 p-3.5 rounded-xl border border-slate-850">
-                  <span className="text-slate-500 block mb-1">Fecha de Registro</span>
+                  <span className="text-slate-500 block mb-1">Fecha de Cotización</span>
                   <span className="text-slate-200 font-medium">{selectedRecord.date}</span>
                 </div>
                 <div className="bg-slate-950/50 p-3.5 rounded-xl border border-slate-850">
@@ -266,7 +266,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
               )}
 
               <div>
-                <span className="text-xs text-slate-500 block mb-1.5 font-medium">Pregunta del Colaborador:</span>
+                <span className="text-xs text-slate-500 block mb-1.5 font-medium">Consulta de la Cotización:</span>
                 <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 text-sm text-slate-100 italic">
                   "{selectedRecord.query}"
                 </div>
