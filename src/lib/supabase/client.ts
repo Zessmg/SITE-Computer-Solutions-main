@@ -1183,14 +1183,14 @@ const SEED_PRODUCTS = [
   },
   {
     "id": "mb-03",
-    "sku": "TC-Z790",
-    "name": "TechCore TC-Z790",
+    "sku": "TC-Z690",
+    "name": "TechCore TC-Z690",
     "category": "Tarjeta madre",
     "brand": "TechCore",
     "price": 5200,
     "stock": 7,
     "warehouse_location": "Almacén de Distribución B-01",
-    "description": "Tarjeta madre ATX gama alta con overclock compatible con DDR5",
+    "description": "Tarjeta madre ATX gama alta con overclock",
     "image_url": "/assets/hero_tech_banner.png",
     "status": "Disponible",
     "specs": {

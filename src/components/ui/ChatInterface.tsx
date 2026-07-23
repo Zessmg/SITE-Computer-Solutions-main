@@ -21,6 +21,15 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [approvedId, setApprovedId] = useState<string | null>(null);
   const [quotedSkus, setQuotedSkus] = useState<string[]>([]);
+  const [quotingState, setQuotingState] = useState<{
+    step: 'idle' | 'waiting_client_name' | 'adding_products';
+    clientName?: string;
+    selectedProducts: any[];
+    pendingQuantity?: number;
+  }>({
+    step: 'idle',
+    selectedProducts: []
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -64,6 +73,267 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           .trim();
 
       const cleanQuery = normalizeText(userMessage.text);
+
+      // --- WIZARD COTIZACIONES FLOW ---
+      if (quotingState.step === 'waiting_client_name') {
+        setQuotingState(prev => ({
+          ...prev,
+          step: 'adding_products',
+          clientName: userMessage.text.trim()
+        }));
+
+        const assistantMessage: ChatMessage = {
+          id: 'm-' + Math.random().toString(36).substr(2, 9),
+          sender: 'assistant',
+          text: `Cliente registrado: **${userMessage.text.trim()}**.\n\nPor favor, escribe el **SKU** o nombre de los productos que deseas agregar, uno por uno. Cuando termines, haz clic en **'Finalizar Cotización'**.\n\n💡 **Guía de SKU Rápidos de nuestro catálogo (copia y pega)**:\n*   **Laptops**: \`NB-A14X\` (NovaByte NB-A14X), \`VX-Pro15\` (Vertex Systems VX-Pro15)\n*   **Tarjetas Madre**: \`TC-Z790\` (TechCore TC-Z790 - *Soporta DDR5*), \`TC-ITX-Mini\` (TechCore TC-ITX-Mini - *Soporta DDR4*)\n*   **Memorias RAM**: \`QL-DDR5-32\` (Quantum Line DDR5), \`OB-DDR4-16\` (OmniBytes DDR4)\n*   **Procesadores/GPUs**: \`FT-i9X-12C\` (Ferrotech CPU), \`NB-RTX90\` (NovaByte GPU)\n\n⚠️ **Reglas de Compatibilidad de RAM y Placa**:\n*   ✅ **Combinación Válida**: Placa DDR5 (\`TC-Z790\`) + Memoria DDR5 (\`QL-DDR5-32\`)\n*   ❌ **Combinación Inválida (Conflicto)**: Placa DDR5 (\`TC-Z790\`) + Memoria DDR4 (\`OB-DDR4-16\`)`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (quotingState.step === 'adding_products') {
+        if (cleanQuery === 'listo' || cleanQuery === 'terminar' || cleanQuery === 'calcular') {
+          if (quotingState.selectedProducts.length === 0) {
+            const assistantMessage: ChatMessage = {
+              id: 'm-' + Math.random().toString(36).substr(2, 9),
+              sender: 'assistant',
+              text: `No has agregado ningún producto todavía. Por favor, escribe un SKU (ej: \`NB-A14X\`) o escribe **'Cancelar'** para salir.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+            setIsLoading(false);
+            return;
+          }
+
+          // Calculate total and compatibility
+          const totalVal = quotingState.selectedProducts.reduce((acc, p) => acc + (p.price * (p.quantity || 1)), 0);
+          
+          const hasMotherboard = quotingState.selectedProducts.some(p => p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard'));
+          const hasRam = quotingState.selectedProducts.some(p => p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria'));
+          
+          let compatibilityStatus = 'OK';
+          if (hasMotherboard && hasRam) {
+            const isD5Motherboard = quotingState.selectedProducts.some(p => (p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard')) && p.description.toLowerCase().includes('ddr5'));
+            const isD5Ram = quotingState.selectedProducts.some(p => (p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria')) && p.description.toLowerCase().includes('ddr5'));
+            
+            const isD4Motherboard = quotingState.selectedProducts.some(p => (p.category.toLowerCase().includes('madre') || p.category.toLowerCase().includes('motherboard')) && p.description.toLowerCase().includes('ddr4'));
+            const isD4Ram = quotingState.selectedProducts.some(p => (p.category.toLowerCase().includes('ram') || p.category.toLowerCase().includes('memoria')) && p.description.toLowerCase().includes('ddr4'));
+
+            if ((isD5Motherboard && isD4Ram) || (isD4Motherboard && isD5Ram)) {
+              compatibilityStatus = 'Incompatibilidad DDR4/DDR5';
+            }
+          }
+
+          setQuotingState({ step: 'idle', selectedProducts: [] });
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `He preparado el resumen final de la cotización para **${quotingState.clientName}**. Por favor, revisa los detalles a continuación antes de enviarla a autorización:`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            metadata: {
+              isMultiProductQuote: true,
+              clientName: quotingState.clientName,
+              products: quotingState.selectedProducts,
+              total: totalVal,
+              compatibility: compatibilityStatus,
+              vigencia: 'OK',
+              moneda: 'MXN',
+              status: 'Revisión'
+            }
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        if (cleanQuery === 'cancelar') {
+          setQuotingState({ step: 'idle', selectedProducts: [] });
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `Asistente de cotización cancelado y descartado.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Función auxiliar para parsear múltiples ítems (ej: "7 NB-A14X y 3 VX-Pro15")
+        const parseMultipleItems = (text: string, normalizeFn: (s: string) => string) => {
+          const parts = text.split(/\s+y\s+|\s+and\s+|\s*,\s*|\s*\+\s*/i);
+          const results = [];
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (!trimmed) continue;
+            const match = trimmed.match(/^(\d+)\s*(?:unidades?|u|un|pz|piezas?\s+(?:de\s+)?)?x?\s*(.+)$/i);
+            if (match) {
+              results.push({
+                quantity: parseInt(match[1], 10),
+                productSearchText: normalizeFn(match[2]),
+                originalText: trimmed
+              });
+            } else {
+              results.push({
+                quantity: 1,
+                productSearchText: normalizeFn(trimmed),
+                originalText: trimmed
+              });
+            }
+          }
+          return results;
+        };
+
+        const parsedItems = parseMultipleItems(userMessage.text, normalizeText);
+
+        // 1. Detectar si el usuario ingresó únicamente una cantidad (ej: "5 unidades" o "5")
+        const qtyOnlyMatch = userMessage.text.trim().match(/^(\d+)\s*(?:unidades?|u|un|pz|piezas?)?\s*(?:de)?$/i);
+        if (qtyOnlyMatch && parsedItems.length === 1 && parsedItems[0].productSearchText === '') {
+          const quantity = parseInt(qtyOnlyMatch[1], 10);
+          setQuotingState(prev => ({
+            ...prev,
+            pendingQuantity: quantity
+          }));
+          
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `De acuerdo, anotado: **${quantity} unidades**. ¿De qué producto o SKU de la lista deseas cotizar esta cantidad?`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Procesar la lista de productos encontrados
+        const addedList: any[] = [];
+        const failedSearches: string[] = [];
+
+        for (const item of parsedItems) {
+          // Si el usuario tenía una cantidad pendiente guardada del paso anterior
+          let quantity = item.quantity;
+          if (parsedItems.length === 1 && quotingState.pendingQuantity && quantity === 1) {
+            quantity = quotingState.pendingQuantity;
+          }
+
+          const words = item.productSearchText.split(/\s+/).filter(w => w.length > 1);
+          let foundProduct = productsList.find(p => {
+            const skuNorm = normalizeText(p.sku);
+            const nameNorm = normalizeText(p.name);
+            const skuStrip = skuNorm.replace(/[^a-z0-9]/g, '');
+            const searchStrip = item.productSearchText.replace(/[^a-z0-9]/g, '');
+            
+            if (skuStrip && searchStrip.includes(skuStrip)) return true;
+            
+            return item.productSearchText.includes(skuNorm) || words.some(word => {
+              const wordStrip = word.replace(/[^a-z0-9]/g, '');
+              return nameNorm.includes(word) || skuNorm.includes(word) || (wordStrip && skuStrip.includes(wordStrip));
+            });
+          });
+
+          if (foundProduct) {
+            const getMockValue = (key: string, category: string): string => {
+              const cat = (category || '').toLowerCase();
+              if (key === 'processor') {
+                if (cat.includes('laptop')) return 'Intel Core i5-1245U';
+                if (cat.includes('desktop')) return 'Intel Core i5-12400';
+                if (cat.includes('mother') || cat.includes('madre')) return 'LGA1700';
+                return 'x86/x64';
+              }
+              if (key === 'ram') {
+                if (cat.includes('laptop')) return '8GB DDR4';
+                if (cat.includes('desktop')) return '16GB DDR4';
+                if (cat.includes('mother') || cat.includes('madre')) return '4x DDR5 slots';
+                return 'N/A';
+              }
+              if (key === 'storage') {
+                if (cat.includes('laptop')) return '512GB NVMe SSD';
+                if (cat.includes('desktop')) return '1TB NVMe SSD';
+                if (cat.includes('mother') || cat.includes('madre')) return '3x M.2 slots';
+                return 'N/A';
+              }
+              return 'N/A';
+            };
+
+            const activeProduct = { ...foundProduct, quantity };
+            if (!activeProduct.specs || activeProduct.specs.processor === 'N/A') {
+              activeProduct.specs = {
+                processor: getMockValue('processor', activeProduct.category),
+                ram: getMockValue('ram', activeProduct.category),
+                storage: getMockValue('storage', activeProduct.category),
+                warranty_months: 12
+              };
+            }
+            addedList.push(activeProduct);
+          } else {
+            const cleanedItemText = item.productSearchText.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (cleanedItemText.includes('z790') || cleanedItemText.includes('tcz790')) {
+              failedSearches.push(`❌ El producto **${item.originalText}** fue reemplazado por **TC-Z690**.`);
+            } else {
+              failedSearches.push(`❌ No se encontraron productos para: "${item.originalText}".`);
+            }
+          }
+        }
+
+        if (addedList.length > 0) {
+          // Guardar en el estado de cotización
+          setQuotingState(prev => ({
+            ...prev,
+            selectedProducts: [...prev.selectedProducts, ...addedList],
+            pendingQuantity: undefined
+          }));
+
+          const currentList = [...quotingState.selectedProducts, ...addedList];
+          const totalUnits = currentList.reduce((acc, p) => acc + (p.quantity || 1), 0);
+          
+          const addedSummaryText = addedList
+            .map(p => `*   ✅ **${p.quantity || 1}x ${p.name}** ($${(p.price * (p.quantity || 1)).toLocaleString('es-MX')} MXN) agregado. (Precio unitario: $${p.price.toLocaleString('es-MX')} MXN)`)
+            .join('\n');
+
+          const failedSummaryText = failedSearches.length > 0
+            ? `\n\n${failedSearches.join('\n')}`
+            : '';
+
+          const listSummaryText = currentList
+            .map(p => `*   **${p.quantity || 1}x** ${p.name}`)
+            .join('\n');
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: `${addedSummaryText}${failedSummaryText}\n\nLlevas un total de **${totalUnits} unidades** en la lista:\n${listSummaryText}\n\n¿Deseas agregar otro equipo? Escribe su SKU/cantidad, o haz clic en el botón **'Finalizar Cotización'** si has terminado.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        } else {
+          // Si falló toda la búsqueda, mantener la cantidad si existía
+          if (quotingState.pendingQuantity) {
+            setQuotingState(prev => ({ ...prev, pendingQuantity: quotingState.pendingQuantity }));
+          }
+          const cleanedText = userMessage.text.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          let failText = `❌ No encontré ningún producto que coincida con "${userMessage.text}". Por favor, indícame un SKU exacto de la lista (ej: \`NB-A14X\`, \`TC-Z690\`, \`QL-DDR5-32\`) o escribe **'Listo'** si has terminado.`;
+          
+          if (cleanedText.includes('z790') || cleanedText.includes('tcz790')) {
+            failText = `❌ El producto **${userMessage.text}** fue reemplazado por **TC-Z690**.`;
+          }
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: failText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // --- PROCEDER CON EL BUSCADOR SEMANTICO NORMAL ---
       const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
 
       let matchedProduct = productsList.find(p => {
@@ -138,49 +408,54 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           manual_name: manualName
         };
       } else {
-        const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen'];
-        
-        // Verificar consultas sin producto especificado
-        const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
-        const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
-        const isWarrantyQuery = cleanQuery.includes('garant');
-        const isManualQuery = cleanQuery.includes('manual');
-        
-        const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
-
-        if (isPriceQuery) {
-          responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
-        } else if (isCompatQuery) {
-          responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
-        } else if (isWarrantyQuery) {
-          responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
-        } else if (isManualQuery) {
-          responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
-        } else if (isListRequest && productsList.length > 0) {
-          responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo maestro de Site Solutions:\n\n`;
-          responseText += `| SKU | Producto | Precio Lista (MXN) | Stock |\n`;
-          responseText += `| :--- | :--- | :--- | :--- |\n`;
-          
-          // Mostrar los primeros 10 productos para no saturar la pantalla
-          const displayProducts = productsList.slice(0, 10);
-          displayProducts.forEach(p => {
-            const priceVal = p.price || 0;
-            responseText += `| \`${p.sku}\` | ${p.name} | $${Number(priceVal).toLocaleString('es-MX', {minimumFractionDigits: 2})} | ${p.stock} u. |\n`;
-          });
-
-          if (productsList.length > 10) {
-            responseText += `\n*Mostrando 10 de ${productsList.length} productos disponibles. Puedes consultar cualquier SKU específico en el chat para iniciar una cotización.*`;
-          } else {
-            responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles, existencias en almacenes o generar una cotización.*`;
-          }
+        const queryCleaned = cleanQuery.replace(/[^a-z0-9]/g, '');
+        if (queryCleaned.includes('z790') || queryCleaned.includes('tcz790')) {
+          responseText = `El producto **TC-Z790** fue reemplazado por **TC-Z690**.`;
         } else {
-          const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
-          const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+          const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen'];
+          
+          // Verificar consultas sin producto especificado
+          const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
+          const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
+          const isWarrantyQuery = cleanQuery.includes('garant');
+          const isManualQuery = cleanQuery.includes('manual');
+          
+          const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
 
-          if (isGreeting) {
-            responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+          if (isPriceQuery) {
+            responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
+          } else if (isCompatQuery) {
+            responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
+          } else if (isWarrantyQuery) {
+            responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
+          } else if (isManualQuery) {
+            responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
+          } else if (isListRequest && productsList.length > 0) {
+            responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo maestro de Site Solutions:\n\n`;
+            responseText += `| SKU | Producto | Precio Lista (MXN) | Stock |\n`;
+            responseText += `| :--- | :--- | :--- | :--- |\n`;
+            
+            // Mostrar los primeros 10 productos para no saturar la pantalla
+            const displayProducts = productsList.slice(0, 10);
+            displayProducts.forEach(p => {
+              const priceVal = p.price || 0;
+              responseText += `| \`${p.sku}\` | ${p.name} | $${Number(priceVal).toLocaleString('es-MX', {minimumFractionDigits: 2})} | ${p.stock} u. |\n`;
+            });
+
+            if (productsList.length > 10) {
+              responseText += `\n*Mostrando 10 de ${productsList.length} productos disponibles. Puedes consultar cualquier SKU específico en el chat para iniciar una cotización.*`;
+            } else {
+              responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles, existencias en almacenes o generar una cotización.*`;
+            }
           } else {
-            responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+            const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
+            const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+
+            if (isGreeting) {
+              responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+            } else {
+              responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+            }
           }
         }
       }
@@ -221,12 +496,106 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
     }
   };
 
+  const handleMultiQuoteAction = async (msg: ChatMessage, action: 'approve' | 'edit' | 'reject') => {
+    if (!msg.metadata) return;
+    
+    // Actualizar estado local del mensaje
+    setMessages(prev => prev.map(m => {
+      if (m.id === msg.id && m.metadata) {
+        return {
+          ...m,
+          metadata: {
+            ...m.metadata,
+            status: action === 'approve' ? 'Aprobada' : action === 'reject' ? 'Rechazada' : 'Editando'
+          }
+        };
+      }
+      return m;
+    }));
+
+    if (action === 'approve') {
+      try {
+        const clientName = msg.metadata.clientName || 'Cliente General';
+        // Registrar en base de datos la cotización multi-producto
+        await insertHistoryRecord({
+          client: clientName,
+          query: `Cotización Multi-producto (${msg.metadata.products.length} ítems)`,
+          response: `Resumen de cotización total de $${msg.metadata.total.toLocaleString('es-MX')} MXN.`,
+          status: 'Pendiente',
+          metadata: {
+            sku: 'MULTI',
+            name: `Cotización: ${msg.metadata.products.map((p: any) => p.sku).join(', ')}`,
+            price: msg.metadata.total,
+            stock: 0,
+            warehouse: 'Varios Almacenes',
+            isMultiProduct: true,
+            products: msg.metadata.products
+          }
+        });
+        
+        const confirmMsg: ChatMessage = {
+          id: 'm-' + Math.random().toString(36).substr(2, 9),
+          sender: 'assistant',
+          text: `¡Cotización para **${clientName}** aprobada y enviada al supervisor! Se ha registrado el folio en la pestaña de **Autorización de Cotizaciones** bajo el estado **'Pendiente'** para la firma final.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, confirmMsg]);
+      } catch (err) {
+        console.error('Error insertando cotización multi-producto:', err);
+      }
+    } else if (action === 'reject') {
+      const cancelMsg: ChatMessage = {
+        id: 'm-' + Math.random().toString(36).substr(2, 9),
+        sender: 'assistant',
+        text: `Cotización para **${msg.metadata.clientName}** rechazada y descartada.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, cancelMsg]);
+    } else if (action === 'edit') {
+      // Activar modo edición en el wizard
+      setQuotingState({
+        step: 'adding_products',
+        clientName: msg.metadata.clientName,
+        selectedProducts: msg.metadata.products
+      });
+      const editMsg: ChatMessage = {
+        id: 'm-' + Math.random().toString(36).substr(2, 9),
+        sender: 'assistant',
+        text: `Modo de edición activado. Llevas **${msg.metadata.products.length} productos** en la lista. Puedes escribir otro SKU para agregarlo, o presionar **'Finalizar Cotización'** cuando termines.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, editMsg]);
+    }
+  };
+
   return (
     <div className="flex h-[650px] bg-slate-900/40 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-xl">
       {/* Left Sidebar - Accesos Rápidos */}
       <div className="w-52 shrink-0 bg-slate-950/40 border-r border-slate-800/80 p-5 flex flex-col hidden sm:flex">
         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-4">ACCESOS RAPIDOS</span>
         <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setQuotingState({
+                step: 'waiting_client_name',
+                selectedProducts: []
+              });
+              
+              const initMessage: ChatMessage = {
+                id: 'm-' + Math.random().toString(36).substr(2, 9),
+                sender: 'assistant',
+                text: 'Iniciando Asistente de Cotización. Por favor, escribe el nombre del cliente para comenzar.',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              setMessages(prev => [...prev, initMessage]);
+            }}
+            className="w-full text-left px-4 py-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-all active:scale-[0.98] shadow-sm flex items-center justify-between"
+          >
+            <span>Cotizaciones</span>
+            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+          </button>
+          
           <button
             type="button"
             onClick={() => setInputText('Ficha técnica del equipo NovaByte NB-A14X')}
@@ -296,6 +665,92 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                 : 'bg-slate-950/70 text-slate-200 border border-slate-800/80 rounded-bl-none shadow-lg'
             }`}>
               <div className="text-sm leading-relaxed whitespace-pre-line">{msg.text}</div>
+              
+              {/* Previsualización de Cotización Multi-producto */}
+              {msg.metadata?.isMultiProductQuote && (
+                <div className="mt-4 p-5 bg-slate-900/90 rounded-2xl border border-slate-800 text-slate-200 space-y-4">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-800 pb-2">
+                    Revisar respuesta antes de enviar
+                  </span>
+                  
+                  {/* Contenedor central - igual a la captura del mockup */}
+                  <div className="bg-slate-950/70 border border-slate-850 p-4 rounded-xl space-y-3.5 font-mono text-xs">
+                    <div className="border-b border-slate-900 pb-2 text-slate-400">
+                      Cliente: <strong className="text-slate-200">{msg.metadata.clientName}</strong> | Consulta: Cotización
+                    </div>
+                    
+                    <div className="space-y-1.5 py-1 text-slate-300">
+                      {msg.metadata.products.map((p: any, idx: number) => {
+                        const qty = p.quantity || 1;
+                        const label = qty > 1 ? `${qty}x ${p.name}` : p.name;
+                        const dotsCount = Math.max(4, 30 - label.length);
+                        const dots = '.'.repeat(dotsCount);
+                        const subtotal = p.price * qty;
+                        return (
+                          <div key={idx} className="flex justify-between">
+                            <span>- {label} {dots}</span>
+                            <span className="font-bold text-cyan-400">${subtotal.toLocaleString('es-MX')} MXN</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="border-t border-slate-900 pt-3 flex justify-between font-bold text-sm text-slate-200">
+                      <span>TOTAL:</span>
+                      <span>${msg.metadata.total.toLocaleString('es-MX')} MXN</span>
+                    </div>
+                  </div>
+                  
+                  {/* Badges de validación - igual a la captura del mockup */}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+                      Vigencia: OK
+                    </span>
+                    
+                    {msg.metadata.compatibility === 'OK' ? (
+                      <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+                        Compatibilidad: OK
+                      </span>
+                    ) : (
+                      <span className="px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[10px] font-bold text-rose-400 flex items-center gap-1">
+                        Compatibilidad: {msg.metadata.compatibility}
+                      </span>
+                    )}
+                    
+                    <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+                      Moneda: MXN
+                    </span>
+                  </div>
+                  
+                  {/* Botones inferiores de acción - igual a la captura del mockup */}
+                  {msg.metadata.status === 'Revisión' ? (
+                    <div className="flex gap-2.5 pt-3 border-t border-slate-800/80">
+                      <button
+                        onClick={() => handleMultiQuoteAction(msg, 'approve')}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-md transition-all active:scale-[0.98]"
+                      >
+                        Aprobar y enviar
+                      </button>
+                      <button
+                        onClick={() => handleMultiQuoteAction(msg, 'edit')}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white shadow-md transition-all active:scale-[0.98]"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleMultiQuoteAction(msg, 'reject')}
+                        className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-xs font-semibold text-white shadow-md transition-all active:scale-[0.98]"
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-xs font-bold text-slate-400 italic">
+                      Estado: Cotización {msg.metadata.status}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Technical Attachment Card */}
               {msg.sender === 'assistant' && msg.metadata && msg.metadata.manual_url && (
@@ -394,15 +849,39 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
       {/* Input area */}
       <form onSubmit={handleSend} className="p-4 bg-slate-950/60 border-t border-slate-800 flex gap-3">
+        {quotingState.step === 'adding_products' && (
+          <button
+            type="button"
+            id="finish-quote-btn"
+            onClick={() => {
+              setInputText('Listo');
+              // Disparar envío
+              setTimeout(() => {
+                const submitBtn = document.getElementById('submit-msg-btn');
+                submitBtn?.click();
+              }, 50);
+            }}
+            className="px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white transition-all active:scale-95 shadow-md shrink-0 animate-pulse"
+          >
+            Finalizar Cotización
+          </button>
+        )}
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Escribe una consulta técnica o comercial en lenguaje natural (ej. 'stock de servidores')..."
+          placeholder={
+            quotingState.step === 'waiting_client_name'
+              ? "Escribe el nombre del cliente..."
+              : quotingState.step === 'adding_products'
+              ? "Escribe un SKU (ej: NB-A14X) o nombre de producto a agregar..."
+              : "Escribe una consulta técnica o comercial en lenguaje natural (ej. 'stock de servidores')..."
+          }
           className="flex-1 bg-slate-900/90 border border-slate-800 text-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-505 placeholder-slate-500 focus:border-cyan-600 transition-all"
         />
         <button
           type="submit"
+          id="submit-msg-btn"
           disabled={!inputText.trim() || isLoading}
           className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white rounded-xl px-5 py-3 flex items-center justify-center gap-2 text-sm font-semibold transition-all active:scale-95 shadow-md shadow-cyan-950/30"
         >
