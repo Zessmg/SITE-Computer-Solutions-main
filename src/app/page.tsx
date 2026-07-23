@@ -452,7 +452,7 @@ export default function Home() {
               <strong className="text-lg font-bold text-emerald-400 mt-1 block">{metrics.totalStock}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Pendientes por Aprobar</span>
+              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Cotizaciones pendientes por aprobar</span>
               <strong className="text-lg font-bold text-amber-400 mt-1 block">{metrics.pendingQuotes}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
