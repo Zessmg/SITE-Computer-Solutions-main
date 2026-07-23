@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, CheckCircle2, MessageSquare, AlertCircle, Sparkles, Server, Laptop, Network, HardDrive, ShieldCheck } from 'lucide-react';
+import { Send, CheckCircle2, MessageSquare, AlertCircle, Sparkles, Server, Laptop, Network, HardDrive, ShieldCheck, Clock, FileText } from 'lucide-react';
 import { ChatMessage, insertHistoryRecord, fetchProducts } from '@/lib/supabase/client';
 
 interface ChatInterfaceProps {
@@ -20,6 +20,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [approvedId, setApprovedId] = useState<string | null>(null);
+  const [quotedSkus, setQuotedSkus] = useState<string[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -54,12 +55,27 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
     // Simulate AI response delay
     setTimeout(() => {
       const queryLower = userMessage.text.toLowerCase();
-      let matchedProduct = productsList.find(p => 
-        queryLower.includes(p.sku.toLowerCase()) || 
-        queryLower.includes(p.name.toLowerCase()) ||
-        p.category.toLowerCase().includes(queryLower) ||
-        (p.brand && queryLower.includes(p.brand.toLowerCase()))
-      );
+      let matchedProduct = productsList.find(p => {
+        const skuLower = p.sku.toLowerCase();
+        const nameLower = p.name.toLowerCase();
+        const categoryLower = p.category.toLowerCase();
+        const descriptionLower = (p.description || '').toLowerCase();
+        
+        // Si la consulta contiene el SKU exacto
+        if (queryLower.includes(skuLower)) return true;
+        
+        // Extraer palabras clave de la consulta
+        const cleanQuery = queryLower.replace(/[¿?¡!.,()]/g, '');
+        const words = cleanQuery.split(/\s+/).filter(w => w.length > 2);
+        
+        // Verificar si alguna palabra coincide con nombre, categoría o descripción
+        return words.some(word => 
+          nameLower.includes(word) || 
+          categoryLower.includes(word) ||
+          descriptionLower.includes(word) ||
+          skuLower.includes(word)
+        );
+      });
 
       let responseText = '';
       let metadata: ChatMessage['metadata'] = undefined;
@@ -113,20 +129,22 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
   const handleApprove = async (msg: ChatMessage) => {
     if (!msg.metadata) return;
+    const sku = msg.metadata.sku;
+    if (quotedSkus.includes(sku)) return; // Evitar clicks duplicados
     
     try {
       const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
       await insertHistoryRecord({
         date: new Date().toISOString().split('T')[0],
         client: clientName,
-        query: `Consulta de SKU: ${msg.metadata.sku} (${msg.metadata.name})`,
+        query: `Cotización de SKU: ${msg.metadata.sku} (${msg.metadata.name})`,
         response: msg.text,
-        status: 'Aprobada',
+        status: 'Pendiente',
         metadata: msg.metadata
       });
 
+      setQuotedSkus(prev => [...prev, sku]);
       setApprovedId(msg.id);
-      setTimeout(() => setApprovedId(null), 3000);
     } catch (err) {
       console.error('Error approving query:', err);
     }
@@ -200,14 +218,24 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                     </div>
                     <button
                       onClick={() => handleApprove(msg)}
+                      disabled={quotedSkus.includes(msg.metadata.sku)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        approvedId === msg.id
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/20 active:scale-95'
+                        quotedSkus.includes(msg.metadata.sku)
+                          ? 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
+                          : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-950/20 active:scale-95'
                       }`}
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      {approvedId === msg.id ? 'Aprobado con éxito' : 'Aprobar y enviar'}
+                      {quotedSkus.includes(msg.metadata.sku) ? (
+                        <>
+                          <Clock className="w-3.5 h-3.5 text-amber-500/80" />
+                          <span>Enviada para Autorización</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-3.5 h-3.5 text-cyan-200" />
+                          <span>Crear Cotización (Por Autorizar)</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
