@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchHistory, updateApprovalStatus, deleteHistoryRecord, HistoryRecord } from '@/lib/supabase/client';
-import { Search, Filter, Calendar, Eye, Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, ChevronDown, Download, Trash2 } from 'lucide-react';
+import { Search, Filter, Calendar, Eye, Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, ChevronDown, ChevronUp, Download, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface HistoryPanelProps {
   currentUser?: any;
@@ -16,9 +16,15 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  // Date Picker filter state
   const [dateFilter, setDateFilter] = useState('');
   const dateInputRef = useRef<HTMLInputElement>(null);
+  
+  // Sort State
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
   
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -49,12 +55,12 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     loadHistory();
   }, []);
 
-  // Reset pagination page and selections when filters change
+  // Reset pagination page and selections when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
     setIsConfirmingBulkDelete(false);
-  }, [filterType, searchFilter, dateFilter]);
+  }, [filterType, searchFilter, dateFilter, sortOrder]);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -201,12 +207,19 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     return true;
   });
 
-  // CSV Exporter using currently filtered set
+  // Local sorting logic based on sortOrder
+  const sortedFilteredHistory = [...filteredHistory].sort((a, b) => {
+    const timeA = a.metadata?.approvedAt ? new Date(a.metadata.approvedAt).getTime() : new Date(a.date + 'T12:00:00').getTime();
+    const timeB = b.metadata?.approvedAt ? new Date(b.metadata.approvedAt).getTime() : new Date(b.date + 'T12:00:00').getTime();
+    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+  });
+
+  // CSV Exporter using currently sorted and filtered set
   const handleExportCSV = () => {
     let csvContent = '\uFEFF'; // Spanish character encoding BOM
     csvContent += 'Fecha,Cliente,Consulta,Estado,Revisor,Fecha Decision\n';
     
-    filteredHistory.forEach(item => {
+    sortedFilteredHistory.forEach(item => {
       const formattedDate = formatDateTime(item.date, item.metadata);
       const client = `"${(item.client || '').replace(/"/g, '""')}"`;
       const query = `"${(item.query || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
@@ -228,10 +241,10 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   };
 
   // Paginated Slicing
-  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedFilteredHistory.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = sortedFilteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   // Selection handlers
   const handleToggleSelect = (id: string, e: React.MouseEvent) => {
@@ -410,43 +423,64 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                     className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
                   />
                 </th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-800/30 hover:text-slate-200 transition-all select-none relative"
-                  onClick={() => {
-                    if (dateInputRef.current) {
-                      if (typeof (dateInputRef.current as any).showPicker === 'function') {
-                        (dateInputRef.current as any).showPicker();
-                      } else {
-                        dateInputRef.current.click();
-                      }
-                    }
-                  }}
-                  title="Haz clic para abrir el calendario y filtrar por fecha"
-                >
-                  <span className="flex items-center gap-1.5 justify-start">
-                    <span>FECHA</span>
-                    <Calendar className={`w-3.5 h-3.5 ${dateFilter ? 'text-cyan-400 font-extrabold' : 'text-slate-500'}`} />
-                    {dateFilter && (
+                <th className="px-6 py-4 select-none">
+                  <div className="flex items-center gap-2 justify-start">
+                    {/* FECHA label toggles sort order */}
+                    <button
+                      onClick={() => toggleSortOrder()}
+                      className="hover:text-slate-200 text-slate-400 transition-all font-bold uppercase tracking-widest flex items-center gap-1 focus:outline-none"
+                      title="Haz clic para ordenar por fecha (ascendente / descendente)"
+                    >
+                      <span>FECHA</span>
+                      {sortOrder === 'desc' ? (
+                        <ArrowDown className="w-3.5 h-3.5 text-cyan-550 animate-in fade-in duration-205" />
+                      ) : (
+                        <ArrowUp className="w-3.5 h-3.5 text-cyan-550 animate-in fade-in duration-205" />
+                      )}
+                    </button>
+
+                    {/* Calendar icon opens date filter */}
+                    <div className="relative flex items-center">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation(); // Avoid triggering picker again
-                          setDateFilter('');
+                          e.stopPropagation();
+                          if (dateInputRef.current) {
+                            if (typeof (dateInputRef.current as any).showPicker === 'function') {
+                              (dateInputRef.current as any).showPicker();
+                            } else {
+                              dateInputRef.current.click();
+                            }
+                          }
                         }}
-                        className="ml-1 p-0.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-all"
-                        title="Limpiar filtro de fecha"
+                        className={`p-1 hover:bg-slate-805 rounded-lg transition-all ${
+                          dateFilter ? 'text-cyan-400 font-bold bg-cyan-955/20' : 'text-slate-500 hover:text-slate-350'
+                        }`}
+                        title="Abrir calendario para filtrar"
                       >
-                        <X className="w-2.5 h-2.5" />
+                        <Calendar className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </span>
-                  <input
-                    type="date"
-                    ref={dateInputRef}
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                    className="absolute opacity-0 w-0 h-0 pointer-events-none"
-                    style={{ left: 0, bottom: 0 }}
-                  />
+                      {dateFilter && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDateFilter('');
+                          }}
+                          className="ml-1 p-0.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-all"
+                          title="Limpiar filtro de fecha"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                      <input
+                        type="date"
+                        ref={dateInputRef}
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+                        style={{ left: 0, bottom: 0 }}
+                      />
+                    </div>
+                  </div>
                 </th>
                 <th className="px-6 py-4">CONSULTA</th>
                 <th className="px-6 py-4 text-center">ESTADO</th>
