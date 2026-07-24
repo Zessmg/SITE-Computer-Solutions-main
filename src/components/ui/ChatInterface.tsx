@@ -837,7 +837,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex h-[650px] bg-slate-900/40 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-xl">
+    <div className="flex h-[500px] bg-slate-900/40 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-xl">
       {/* Left Sidebar - Accesos Rápidos */}
       <div className="w-52 shrink-0 bg-slate-950/40 border-r border-slate-800/80 p-5 flex flex-col hidden sm:flex">
         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-4">ACCESOS RAPIDOS</span>
