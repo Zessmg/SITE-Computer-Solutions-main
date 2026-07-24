@@ -470,7 +470,16 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
       }
 
       // --- PROCEDER CON EL BUSCADOR SEMANTICO NORMAL ---
-      const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
+      const stopWords = [
+        'de', 'del', 'con', 'para', 'por', 'un', 'una', 'unos', 'unas', 
+        'el', 'la', 'los', 'las', 'y', 'o', 'en', 'unidades', 'cotiza', 
+        'cotizame', 'ejemplo', 'ejemplos', 'disponibles', 'precio', 
+        'precios', 'stock', 'garantia', 'garantias', 'manual', 'manuales',
+        'que', 'a', 'al', 'los', 'sus', 'como', 'saber', 'cuanto', 'cuesta', 'unidad'
+      ];
+      const words = cleanQuery
+        .split(/\s+/)
+        .filter(w => w.length > 1 && !stopWords.includes(w) && !/^\d+$/.test(w));
 
       // --- INTERCEPTAR PETICIONES DE LISTADO O EJEMPLO ---
       const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen', 'ejemplo', 'ejemplos'];
