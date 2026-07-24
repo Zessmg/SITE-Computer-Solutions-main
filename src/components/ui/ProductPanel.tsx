@@ -60,7 +60,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
   const [newProductForm, setNewProductForm] = useState({
     sku: '',
     name: '',
-    category: 'Servidores',
+    category: 'Laptop',
     brand: 'Site Solutions',
     price: 0,
     stock: 0,
@@ -177,7 +177,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
       setNewProductForm({
         sku: '',
         name: '',
-        category: 'Servidores',
+        category: 'Laptop',
         brand: 'Site Solutions',
         price: 0,
         stock: 0,
@@ -469,12 +469,26 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   <select
                     value={newProductForm.category}
                     onChange={(e) => setNewProductForm({...newProductForm, category: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 capitalize"
                   >
-                    <option value="Servidores">Servidores</option>
-                    <option value="Workstations">Workstations</option>
-                    <option value="Networking">Networking</option>
-                    <option value="Almacenamiento">Almacenamiento</option>
+                    {Array.from(new Set([
+                      'Laptop',
+                      'Desktop',
+                      'Procesador',
+                      'Tarjeta Gráfica',
+                      'Tarjeta Madre',
+                      'Memoria RAM',
+                      'Almacenamiento',
+                      'Fuente De Poder',
+                      'Servidores',
+                      'Workstations',
+                      'Networking',
+                      ...categoriesList.filter(cat => cat !== 'Todos')
+                    ])).map(cat => (
+                      <option key={cat} value={cat} className="capitalize">
+                        {cat}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1">
