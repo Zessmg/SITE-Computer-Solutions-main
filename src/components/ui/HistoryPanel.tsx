@@ -11,7 +11,7 @@ interface HistoryPanelProps {
 export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('Todos');
+  const [filterType, setFilterType] = useState('Todos');
   const [searchFilter, setSearchFilter] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -31,7 +31,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const data = await fetchHistory(statusFilter, searchFilter);
+      const data = await fetchHistory(); // Fetch all records for local filtering
       setHistory(data);
     } catch (err) {
       console.error('Error fetching history:', err);
@@ -40,13 +40,17 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     }
   };
 
-  // Reset pagination page, selections and fetch history when filter changes
+  // Fetch history once on mount
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  // Reset pagination page and selections when filters change
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
     setIsConfirmingBulkDelete(false);
-    loadHistory();
-  }, [statusFilter, searchFilter]);
+  }, [filterType, searchFilter]);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -106,32 +110,6 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     setIsConfirmingDelete(false);
   };
 
-  // CSV Exporter
-  const handleExportCSV = () => {
-    let csvContent = '\uFEFF'; // Spanish character encoding BOM
-    csvContent += 'Fecha,Cliente,Consulta,Estado,Revisor,Fecha Decision\n';
-    
-    history.forEach(item => {
-      const formattedDate = formatDateTime(item.date, item.metadata);
-      const client = `"${(item.client || '').replace(/"/g, '""')}"`;
-      const query = `"${(item.query || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
-      const status = `"${item.status || ''}"`;
-      const revisor = `"${(item.metadata?.approvedBy || 'N/A').replace(/"/g, '""')}"`;
-      const decisionDate = `"${(item.metadata?.approvedAt || 'N/A').replace(/"/g, '""')}"`;
-      
-      csvContent += `${formattedDate},${client},${query},${status},${revisor},${decisionDate}\n`;
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'historial_cotizaciones.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Date and Time formatter helper
   const formatDateTime = (dateStr: string, metadata?: any) => {
     if (!dateStr) return 'N/A';
@@ -153,11 +131,83 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     return dateStr;
   };
 
+  // Local filtering logic based on selected filterType
+  const filteredHistory = history.filter(item => {
+    // 1. If search filter is empty, apply status type filter subsets
+    if (!searchFilter.trim()) {
+      if (filterType === 'Estado: Aprobada') return item.status === 'Aprobada';
+      if (filterType === 'Estado: Pendiente') return item.status === 'Pendiente';
+      if (filterType === 'Estado: Rechazada') return item.status === 'Rechazada';
+      return true;
+    }
+
+    const term = searchFilter.toLowerCase();
+
+    // 2. Filter by search text depending on active criteria
+    if (filterType === 'Todos') {
+      const formattedDate = formatDateTime(item.date, item.metadata).toLowerCase();
+      return (
+        item.client.toLowerCase().includes(term) || 
+        item.query.toLowerCase().includes(term) ||
+        item.response.toLowerCase().includes(term) ||
+        item.status.toLowerCase().includes(term) ||
+        formattedDate.includes(term)
+      );
+    }
+    
+    if (filterType.startsWith('Estado')) {
+      const targetStatus = filterType.split(': ')[1];
+      if (item.status !== targetStatus) return false;
+      return (
+        item.status.toLowerCase().includes(term) ||
+        item.client.toLowerCase().includes(term) ||
+        item.query.toLowerCase().includes(term)
+      );
+    }
+
+    if (filterType === 'Fecha') {
+      const formattedDate = formatDateTime(item.date, item.metadata).toLowerCase();
+      return formattedDate.includes(term);
+    }
+
+    if (filterType === 'Consulta') {
+      return item.query.toLowerCase().includes(term);
+    }
+
+    return true;
+  });
+
+  // CSV Exporter using currently filtered set
+  const handleExportCSV = () => {
+    let csvContent = '\uFEFF'; // Spanish character encoding BOM
+    csvContent += 'Fecha,Cliente,Consulta,Estado,Revisor,Fecha Decision\n';
+    
+    filteredHistory.forEach(item => {
+      const formattedDate = formatDateTime(item.date, item.metadata);
+      const client = `"${(item.client || '').replace(/"/g, '""')}"`;
+      const query = `"${(item.query || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+      const status = `"${item.status || ''}"`;
+      const revisor = `"${(item.metadata?.approvedBy || 'N/A').replace(/"/g, '""')}"`;
+      const decisionDate = `"${(item.metadata?.approvedAt || 'N/A').replace(/"/g, '""')}"`;
+      
+      csvContent += `${formattedDate},${client},${query},${status},${revisor},${decisionDate}\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'historial_cotizaciones.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Paginated Slicing
-  const totalPages = Math.ceil(history.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = history.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   // Selection handlers
   const handleToggleSelect = (id: string, e: React.MouseEvent) => {
@@ -209,7 +259,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
       </div>
 
       {/* Filters Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center p-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl backdrop-blur-xl shadow-md">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center p-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl backdrop-blur-xl shadow-md relative z-20">
         
         {/* Search Input Box */}
         <div className="flex-1 relative">
@@ -218,7 +268,15 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
           </span>
           <input
             type="text"
-            placeholder="Buscar por cliente, producto o fecha..."
+            placeholder={
+              filterType === 'Fecha'
+                ? "Buscar solo por fecha (ej: DD/MM/AAAA)..."
+                : filterType === 'Consulta'
+                ? "Buscar solo por contenido de consulta..."
+                : filterType.startsWith('Estado')
+                ? `Buscar por texto dentro de ${filterType}...`
+                : "Buscar por cliente, producto o fecha..."
+            }
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
             className="w-full bg-slate-955 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-600 transition-all font-medium"
@@ -242,7 +300,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                 </button>
               ) : (
                 <div className="flex items-center gap-2 text-[10px] font-bold">
-                  <span className="text-rose-400">¿Confirmas borrar {selectedIds.length} {selectedIds.length === 1 ? 'registro' : 'registros'}?</span>
+                  <span className="text-rose-455">¿Confirmas borrar {selectedIds.length} {selectedIds.length === 1 ? 'registro' : 'registros'}?</span>
                   <button
                     onClick={executeBulkDelete}
                     className="px-2 py-1 bg-rose-650 hover:bg-rose-600 text-white rounded-lg transition-all"
@@ -268,28 +326,33 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-955 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl text-xs font-bold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98]"
             >
               <Filter className="w-3.5 h-3.5 text-cyan-500" />
-              <span>Filtrar: {statusFilter}</span>
+              <span>Filtrar: {filterType}</span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-40 rounded-xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-20 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 mt-2 w-48 rounded-xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-20 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="py-1">
-                  {['Todos', 'Aprobada', 'Pendiente', 'Rechazada'].map((status) => (
+                  {[
+                    'Todos', 
+                    'Estado: Aprobada', 
+                    'Estado: Pendiente', 
+                    'Estado: Rechazada'
+                  ].map((type) => (
                     <button
-                      key={status}
+                      key={type}
                       type="button"
                       onClick={() => {
-                        setStatusFilter(status);
+                        setFilterType(type);
                         setIsDropdownOpen(false);
                       }}
                       className={`w-full text-left px-4 py-2 text-xs transition-all font-semibold block ${
-                        statusFilter === status
+                        filterType === type
                           ? 'bg-cyan-655 text-cyan-400 bg-cyan-955/30'
                           : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                       }`}
                     >
-                      {status}
+                      {type}
                     </button>
                   ))}
                 </div>
@@ -338,7 +401,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                     </div>
                   </td>
                 </tr>
-              ) : history.length === 0 ? (
+              ) : filteredHistory.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="text-center py-16 text-slate-500">
                     <div className="flex flex-col items-center gap-2">
@@ -530,7 +593,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                       Pendiente de validación en la pestaña de Aprobaciones.
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-550 flex items-center gap-1.5 font-bold">
+                    <span className="text-xs text-slate-555 flex items-center gap-1.5 font-bold">
                       <ShieldAlert className="w-4 h-4 text-cyan-500" />
                       Decisión registrada e inmutable
                     </span>
