@@ -472,6 +472,50 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
       // --- PROCEDER CON EL BUSCADOR SEMANTICO NORMAL ---
       const words = cleanQuery.split(/\s+/).filter(w => w.length > 1);
 
+      // --- INTERCEPTAR PETICIONES DE LISTADO O EJEMPLO ---
+      const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen', 'ejemplo', 'ejemplos'];
+      const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
+
+      if (isListRequest && productsList.length > 0) {
+        let responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo. Aquí tienes 10 ejemplos de productos distintos para que puedas elegir lo que estás buscando:\n\n`;
+        
+        // Mostrar 10 productos distintos
+        const displayProducts = productsList.slice(0, 10);
+        displayProducts.forEach((p, idx) => {
+          const priceVal = p.price || 0;
+          responseText += `${idx + 1}. **${p.name}** (SKU: \`${p.sku}\`)\n`;
+          responseText += `   * *Categoría:* ${p.category}\n`;
+          responseText += `   * *Precio Lista:* $${Number(priceVal).toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN | *Stock:* ${p.stock} unidades\n\n`;
+        });
+        
+        responseText += `💡 *Puedes escribir el SKU (ej: \`NB-A14X\`) o el nombre de cualquiera de estos productos para ver más detalles.*`;
+
+        const assistantMessage: ChatMessage = {
+          id: 'm-' + Math.random().toString(36).substr(2, 9),
+          sender: 'assistant',
+          text: responseText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        // Guardar la consulta del catálogo en el historial
+        const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+        try {
+          insertHistoryRecord({
+            date: new Date().toISOString().split('T')[0],
+            client: clientName,
+            query: userMessage.text,
+            response: responseText,
+            status: 'Aprobada'
+          });
+        } catch (e) {
+          console.error("Error inserting auto history:", e);
+        }
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
       let matchedProduct = productsList.find(p => {
         const skuNorm = normalizeText(p.sku);
         const nameNorm = normalizeText(p.name);
