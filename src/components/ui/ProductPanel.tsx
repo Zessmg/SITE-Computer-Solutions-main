@@ -443,7 +443,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
             <form onSubmit={handleAddProductSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Código SKU (Único)</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Código SKU (Único) <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                   <input
                     type="text"
                     required
@@ -454,7 +454,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Nombre Comercial</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Nombre Comercial <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                   <input
                     type="text"
                     required
@@ -492,7 +492,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Lista (MXN)</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Lista (MXN) <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                   <input
                     type="number"
                     required
@@ -504,7 +504,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Stock Físico</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">Stock Físico <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                   <input
                     type="number"
                     required
@@ -528,7 +528,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase block">Descripción Corta</label>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block">Descripción Corta <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                 <textarea
                   required
                   placeholder="Describe las características generales, uso clave e infraestructura sugerida..."
@@ -624,7 +624,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Venta (MXN)</label>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block">Precio de Venta (MXN) <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">$</span>
                   <input
@@ -640,7 +640,7 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase block">Descripción del Producto</label>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block">Descripción del Producto <span className="text-red-500 text-sm font-extrabold ml-0.5 align-middle">*</span></label>
                 <textarea
                   required
                   value={editForm.description}
