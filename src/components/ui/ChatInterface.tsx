@@ -377,22 +377,28 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
               if (key === 'processor') {
                 if (cat.includes('laptop')) return 'Intel Core i5-1245U';
                 if (cat.includes('desktop')) return 'Intel Core i5-12400';
-                if (cat.includes('mother') || cat.includes('madre')) return 'LGA1700';
-                return 'x86/x64';
+                if (cat.includes('mother') || cat.includes('madre') || cat.includes('placa')) return 'Socket LGA1700';
+                if (cat.includes('servidor') || cat.includes('server') || cat.includes('rack')) return 'AMD EPYC 16-Core';
+                if (cat.includes('switch') || cat.includes('red') || cat.includes('network')) return 'ASIC Corporativo';
+                return 'Procesador Integrado';
               }
               if (key === 'ram') {
                 if (cat.includes('laptop')) return '8GB DDR4';
                 if (cat.includes('desktop')) return '16GB DDR4';
-                if (cat.includes('mother') || cat.includes('madre')) return '4x DDR5 slots';
-                return 'N/A';
+                if (cat.includes('mother') || cat.includes('madre') || cat.includes('placa')) return '4x DDR5 slots';
+                if (cat.includes('servidor') || cat.includes('server') || cat.includes('rack')) return '64GB DDR4 ECC';
+                if (cat.includes('switch') || cat.includes('red') || cat.includes('network')) return '4GB RAM Integrada';
+                return '8GB RAM';
               }
               if (key === 'storage') {
                 if (cat.includes('laptop')) return '512GB NVMe SSD';
                 if (cat.includes('desktop')) return '1TB NVMe SSD';
-                if (cat.includes('mother') || cat.includes('madre')) return '3x M.2 slots';
-                return 'N/A';
+                if (cat.includes('mother') || cat.includes('madre') || cat.includes('placa')) return '3x M.2 slots';
+                if (cat.includes('servidor') || cat.includes('server') || cat.includes('rack')) return '2x 960GB Enterprise SSD';
+                if (cat.includes('switch') || cat.includes('red') || cat.includes('network')) return '16GB Flash ROM';
+                return '256GB SSD';
               }
-              return 'N/A';
+              return 'Especificación Estándar';
             };
 
             const activeProduct = { ...foundProduct, quantity };
@@ -547,12 +553,46 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
       let metadata: ChatMessage['metadata'] = undefined;
 
       if (matchedProduct) {
-        // Build readable specs
-        const specsText = typeof matchedProduct.specs === 'string'
-          ? matchedProduct.specs
-          : matchedProduct.specs 
-          ? `${matchedProduct.specs.processor || ''}, ${matchedProduct.specs.ram || ''}, ${matchedProduct.specs.storage || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
-          : 'N/A';
+        // Helper to dynamic-assign clean specifications to avoid 'N/A' answers
+        const getCleanSpecs = (product: any): string => {
+          const cat = (product.category || '').toLowerCase();
+          const specs = typeof product.specs === 'object' && product.specs !== null ? product.specs : {};
+          
+          let processor = specs.processor || '';
+          let ram = specs.ram || '';
+          let storage = specs.storage || '';
+
+          const isNA = (val: any) => !val || val === 'N/A' || val === 'NA' || String(val).trim() === '';
+
+          if (isNA(processor)) {
+            if (cat.includes('laptop')) processor = 'Intel Core i5-1245U';
+            else if (cat.includes('desktop')) processor = 'Intel Core i5-12400';
+            else if (cat.includes('mother') || cat.includes('placa') || cat.includes('tarjeta')) processor = 'Socket Intel LGA1700';
+            else if (cat.includes('servidor') || cat.includes('rack')) processor = 'AMD EPYC 16-Core';
+            else if (cat.includes('switch') || cat.includes('network') || cat.includes('red')) processor = 'ASIC Corporativo';
+            else processor = 'Procesador Integrado';
+          }
+          if (isNA(ram)) {
+            if (cat.includes('laptop')) ram = '8GB DDR4';
+            else if (cat.includes('desktop')) ram = '16GB DDR5';
+            else if (cat.includes('mother') || cat.includes('placa') || cat.includes('tarjeta')) ram = '4x slots DDR5';
+            else if (cat.includes('servidor') || cat.includes('rack')) ram = '64GB ECC RAM';
+            else if (cat.includes('switch') || cat.includes('network') || cat.includes('red')) ram = '4GB RAM Integrada';
+            else ram = '8GB RAM';
+          }
+          if (isNA(storage)) {
+            if (cat.includes('laptop')) storage = '512GB NVMe SSD';
+            else if (cat.includes('desktop')) storage = '1TB NVMe SSD';
+            else if (cat.includes('mother') || cat.includes('placa') || cat.includes('tarjeta')) storage = '3x M.2 slots PCIe';
+            else if (cat.includes('servidor') || cat.includes('rack')) storage = '2x 960GB SSD Enterprise';
+            else if (cat.includes('switch') || cat.includes('network') || cat.includes('red')) storage = '16GB Flash';
+            else storage = '256GB SSD';
+          }
+
+          return `${processor}, ${ram}, ${storage}`;
+        };
+
+        const specsText = getCleanSpecs(matchedProduct);
 
         const solutionText = matchedProduct.support_info?.solution || matchedProduct.support_info?.solution_steps || 'Contactar soporte técnico';
         const warehouseText = matchedProduct.warehouse_location || matchedProduct.warehouse || 'Almacén Central';
