@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchHistory, updateApprovalStatus, HistoryRecord } from '@/lib/supabase/client';
-import { Search, Filter, Calendar, Eye, Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, ChevronDown, Download } from 'lucide-react';
+import { fetchHistory, updateApprovalStatus, deleteHistoryRecord, HistoryRecord } from '@/lib/supabase/client';
+import { Search, Filter, Calendar, Eye, Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, ChevronDown, Download, Trash2 } from 'lucide-react';
 
 interface HistoryPanelProps {
   currentUser?: any;
@@ -16,8 +16,17 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Detail Modal State
   const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const loadHistory = async () => {
     setLoading(true);
@@ -31,7 +40,11 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     }
   };
 
+  // Reset pagination page, selections and fetch history when filter changes
   useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds([]);
+    setIsConfirmingBulkDelete(false);
     loadHistory();
   }, [statusFilter, searchFilter]);
 
@@ -71,6 +84,26 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     } catch (err) {
       console.error('Error updating approval status:', err);
     }
+  };
+
+  // Delete Record Handler
+  const handleDelete = async (id: string) => {
+    try {
+      const success = await deleteHistoryRecord(id);
+      if (success) {
+        setHistory(prev => prev.filter(item => item.id !== id));
+        setSelectedIds(prev => prev.filter(item => item !== id));
+        setSelectedRecord(null);
+        setIsConfirmingDelete(false);
+      }
+    } catch (err) {
+      console.error('Error deleting history record:', err);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedRecord(null);
+    setIsConfirmingDelete(false);
   };
 
   // CSV Exporter
@@ -120,8 +153,48 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     return dateStr;
   };
 
+  // Paginated Slicing
+  const totalPages = Math.ceil(history.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = history.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Selection handlers
+  const handleToggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid opening detailed modal
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const currentPageIds = currentItems.map(item => item.id);
+    const allSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.includes(id));
+    
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !currentPageIds.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...currentPageIds])]);
+    }
+  };
+
+  const isAllCurrentPageSelected = currentItems.length > 0 && currentItems.map(item => item.id).every(id => selectedIds.includes(id));
+
+  // Bulk Delete execute
+  const executeBulkDelete = async () => {
+    try {
+      await Promise.all(selectedIds.map(id => deleteHistoryRecord(id)));
+      setHistory(prev => prev.filter(item => !selectedIds.includes(item.id)));
+      setSelectedIds([]);
+      setIsConfirmingBulkDelete(false);
+      setCurrentPage(1);
+    } catch (err) {
+      console.error('Error executing bulk delete:', err);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-205">
       {/* Title & Info Banner */}
       <div className="flex justify-between items-center">
         <div>
@@ -148,13 +221,45 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
             placeholder="Buscar por cliente, producto o fecha..."
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full bg-slate-950/80 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-600 transition-all font-medium"
+            className="w-full bg-slate-955 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-600 transition-all font-medium"
           />
         </div>
 
-        {/* Dropdown status Filter & Export button */}
+        {/* Dropdown status Filter, Export and Bulk Delete button */}
         <div className="flex items-center gap-3 justify-end shrink-0">
           
+          {/* Bulk Delete Confirm Action */}
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2 bg-slate-950/65 border border-rose-500/25 px-3 py-1.5 rounded-xl animate-in zoom-in duration-200">
+              {!isConfirmingBulkDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingBulkDelete(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:text-rose-350 transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Borrar ({selectedIds.length})</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 text-[10px] font-bold">
+                  <span className="text-rose-400">¿Confirmas borrar {selectedIds.length} {selectedIds.length === 1 ? 'registro' : 'registros'}?</span>
+                  <button
+                    onClick={executeBulkDelete}
+                    className="px-2 py-1 bg-rose-650 hover:bg-rose-600 text-white rounded-lg transition-all"
+                  >
+                    Sí
+                  </button>
+                  <button
+                    onClick={() => setIsConfirmingBulkDelete(false)}
+                    className="px-2 py-1 bg-slate-800 text-slate-300 rounded-lg transition-all"
+                  >
+                    No
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Dropdown Button */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -180,7 +285,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                       }}
                       className={`w-full text-left px-4 py-2 text-xs transition-all font-semibold block ${
                         statusFilter === status
-                          ? 'bg-cyan-650 text-cyan-400 bg-cyan-950/30'
+                          ? 'bg-cyan-655 text-cyan-400 bg-cyan-955/30'
                           : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                       }`}
                     >
@@ -204,12 +309,20 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Main Table Container */}
       <div className="bg-slate-900/10 border border-slate-800 rounded-2xl overflow-hidden shadow-xl backdrop-blur-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-950/50 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <th className="px-4 py-4 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllCurrentPageSelected}
+                    onChange={handleToggleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-4">FECHA</th>
                 <th className="px-6 py-4">CONSULTA</th>
                 <th className="px-6 py-4 text-center">ESTADO</th>
@@ -218,7 +331,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
             <tbody className="divide-y divide-slate-850/60 text-xs text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="text-center py-16">
+                  <td colSpan={4} className="text-center py-16">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-7 h-7 rounded-full border-2 border-slate-805 border-t-cyan-500 animate-spin" />
                       <span className="text-slate-400 text-xs font-medium">Cargando registros...</span>
@@ -227,7 +340,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="text-center py-16 text-slate-500">
+                  <td colSpan={4} className="text-center py-16 text-slate-500">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="w-8 h-8 text-slate-700" />
                       <span className="text-slate-450 font-semibold text-xs">No se encontraron cotizaciones en el historial</span>
@@ -236,7 +349,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                   </td>
                 </tr>
               ) : (
-                history.map((record) => {
+                currentItems.map((record) => {
                   const isApproved = record.status === 'Aprobada';
                   const isRejected = record.status === 'Rechazada';
                   
@@ -253,8 +366,18 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                     <tr 
                       key={record.id} 
                       onClick={() => setSelectedRecord(record)}
-                      className="hover:bg-slate-900/35 transition-all cursor-pointer"
+                      className={`hover:bg-slate-900/35 transition-all cursor-pointer ${
+                        selectedIds.includes(record.id) ? 'bg-cyan-950/10' : ''
+                      }`}
                     >
+                      <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(record.id)}
+                          onChange={(e) => handleToggleSelect(record.id, e as any)}
+                          className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-[10px] text-slate-450 font-mono font-medium">
                         <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-slate-500" />
@@ -291,6 +414,29 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="px-6 py-3.5 bg-slate-955 border-t border-slate-800/80 flex justify-between items-center text-xs">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 bg-slate-955 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:hover:bg-slate-955 rounded-xl font-bold text-slate-300 disabled:opacity-30 transition-all active:scale-[0.98]"
+            >
+              Anterior
+            </button>
+            <span className="text-slate-450 font-semibold font-mono text-[10px]">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 bg-slate-955 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 disabled:hover:bg-slate-955 rounded-xl font-bold text-slate-300 disabled:opacity-30 transition-all active:scale-[0.98]"
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Details Dialog / Modal */}
@@ -306,7 +452,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                 </h3>
               </div>
               <button
-                onClick={() => setSelectedRecord(null)}
+                onClick={closeModal}
                 className="text-slate-400 hover:text-slate-200 transition-all text-lg font-medium p-1 hover:bg-slate-850 rounded-lg"
               >
                 ✕
@@ -350,14 +496,14 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
 
               <div>
                 <span className="text-[10px] text-slate-500 block mb-1.5 font-bold uppercase">Consulta del Cliente:</span>
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 text-xs text-slate-200 italic font-mono">
+                <div className="bg-slate-955 p-4 rounded-xl border border-slate-850 text-xs text-slate-200 italic font-mono">
                   "{selectedRecord.query}"
                 </div>
               </div>
 
               <div>
                 <span className="text-[10px] text-slate-500 block mb-1.5 font-bold uppercase">Respuesta Generada por IA:</span>
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 text-xs text-slate-200 font-normal leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                <div className="bg-slate-955 p-4 rounded-xl border border-slate-850 text-xs text-slate-200 font-normal leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {selectedRecord.response}
                 </div>
               </div>
@@ -406,9 +552,37 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 bg-slate-955 border-t border-slate-800 flex justify-end">
+            <div className="px-6 py-4 bg-slate-955 border-t border-slate-800 flex justify-between items-center">
+              <div>
+                {!isConfirmingDelete ? (
+                  <button
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-rose-600/10 hover:bg-rose-650 text-rose-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-rose-500/20 active:scale-95 shadow-md shadow-rose-950/10 animate-in fade-in"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Eliminar Registro</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-150">
+                    <span className="text-[10px] text-rose-450 font-bold">¿Confirmas borrar?</span>
+                    <button
+                      onClick={() => handleDelete(selectedRecord.id)}
+                      className="px-2.5 py-1.5 bg-rose-655 hover:bg-rose-500 text-white rounded-lg text-[10px] font-bold transition-all active:scale-95 shadow-sm"
+                    >
+                      Sí, borrar
+                    </button>
+                    <button
+                      onClick={() => setIsConfirmingDelete(false)}
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-755 text-slate-300 rounded-lg text-[10px] font-bold transition-all active:scale-95"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={() => setSelectedRecord(null)}
+                onClick={closeModal}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl px-4 py-2 text-xs font-bold transition-all active:scale-95"
               >
                 Cerrar Ventana

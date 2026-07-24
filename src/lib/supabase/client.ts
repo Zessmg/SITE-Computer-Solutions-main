@@ -317,9 +317,38 @@ export async function updateApprovalStatus(
       approvedAt
     };
     setLocalStorageData('site_solutions_history', history);
-    return true;
   }
   return false;
+}
+
+/**
+ * DELETE: Eliminar un registro de cotización del historial de auditoría.
+ */
+export async function deleteHistoryRecord(id: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('audit_history')
+        .delete()
+        .eq('id', id);
+      
+      if (!error) return true;
+      console.warn('Supabase delete error, falling back:', error);
+    } catch (err) {
+      console.error('Supabase delete exception:', err);
+    }
+  }
+
+  // Fallback
+  try {
+    const history = getLocalStorageData<HistoryRecord[]>('site_solutions_history', SEED_HISTORY);
+    const updatedHistory = history.filter(item => item.id !== id);
+    setLocalStorageData('site_solutions_history', updatedHistory);
+    return true;
+  } catch (err) {
+    console.error('Local delete failed:', err);
+    return false;
+  }
 }
 
 /**
