@@ -543,6 +543,21 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           manual_url: manualUrl,
           manual_name: manualName
         };
+
+        // Guardar automáticamente en el historial de consultas generales
+        const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+        try {
+          insertHistoryRecord({
+            date: new Date().toISOString().split('T')[0],
+            client: clientName,
+            query: userMessage.text,
+            response: responseText,
+            status: 'Aprobada',
+            metadata
+          });
+        } catch (e) {
+          console.error("Error inserting auto history:", e);
+        }
       } else {
         const queryCleaned = cleanQuery.replace(/[^a-z0-9]/g, '');
         if (queryCleaned.includes('z790') || queryCleaned.includes('tcz790')) {
