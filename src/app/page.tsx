@@ -481,7 +481,7 @@ export default function Home() {
               }`}
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Portal de Consulta</span>
+              <span>Asistente IA</span>
             </button>
             
             <button
