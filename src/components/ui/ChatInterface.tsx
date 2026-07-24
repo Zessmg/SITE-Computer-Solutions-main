@@ -54,7 +54,8 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
       'Ficha técnica del equipo NovaByte NB-A14X',
       '¿Es la memoria RAM Quantum Line QL-DDR5-32 compatible con la placa TechCore TC-Z790?',
       '¿Cuál es la garantía y cobertura para el procesador Ferrotech FT-i9X-12C?',
-      '¿Dónde encuentro el manual de usuario o guía de la laptop Vertex Systems VX-Pro15?'
+      '¿Dónde encuentro el manual de usuario o guía de la laptop Vertex Systems VX-Pro15?',
+      'Precio de la laptop NovaByte NB-A14X'
     ].includes(inputText.trim());
 
     if (!isQA && activeQuickAccess !== 'cotizaciones') {
@@ -644,7 +645,8 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         const isCompat = cleanQuery.includes('compatib') || cleanQuery.includes('compatible');
         const isGarant = cleanQuery.includes('garant');
         const isManual = cleanQuery.includes('manual');
-        const isSpecRequest = isFicha || isCompat || isGarant || isManual;
+        const isPrecio = cleanQuery.includes('precio');
+        const isSpecRequest = isFicha || isCompat || isGarant || isManual || isPrecio;
 
         metadata = {
           sku: matchedProduct.sku,
@@ -920,6 +922,17 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                 >
                   <span>Manuales</span>
                   {activeQuickAccess === 'manuales' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveQuickAccess('precios');
+                    setInputText('Precio de la laptop NovaByte NB-A14X');
+                  }}
+                  className={getButtonClass('precios')}
+                >
+                  <span>Precios</span>
+                  {activeQuickAccess === 'precios' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
                 </button>
               </>
             );
