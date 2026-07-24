@@ -37,6 +37,16 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'aprobaciones' | 'administracion' | 'productos'>('consulta');
   const [isAdminMode, setIsAdminMode] = useState(false);
   
+  const getTabClass = (tabId: string) => {
+    const isActive = activeTab === tabId;
+    const baseClass = "flex items-center gap-2 py-2.5 px-4 text-xs font-bold transition-all border rounded-xl active:scale-[0.98]";
+    if (isActive) {
+      return `${baseClass} bg-slate-900 border-cyan-500/50 text-cyan-400 shadow-md shadow-cyan-950/20 ring-1 ring-cyan-500/10`;
+    } else {
+      return `${baseClass} bg-slate-950/15 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-850/25 hover:border-slate-700`;
+    }
+  };
+  
   // Auth state
   const [user, setUser] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -470,15 +480,11 @@ export default function Home() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-16 space-y-6">
         
         {/* Navigation Tab Bar */}
-        <div className="flex border-b border-slate-850 items-center justify-between">
-          <div className="flex gap-1.5 -mb-px">
+        <div className="border-b border-slate-850/30 pb-4">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setActiveTab('consulta')}
-              className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
-                activeTab === 'consulta'
-                  ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
-              }`}
+              className={getTabClass('consulta')}
             >
               <MessageSquare className="w-4 h-4" />
               <span>Asistente IA</span>
@@ -486,11 +492,7 @@ export default function Home() {
             
             <button
               onClick={() => setActiveTab('productos')}
-              className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
-                activeTab === 'productos'
-                  ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
-              }`}
+              className={getTabClass('productos')}
             >
               <Layers className="w-4 h-4" />
               <span>Catálogo de Equipos</span>
@@ -498,11 +500,7 @@ export default function Home() {
             
             <button
               onClick={() => setActiveTab('historial')}
-              className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
-                activeTab === 'historial'
-                  ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
-              }`}
+              className={getTabClass('historial')}
             >
               <History className="w-4 h-4" />
               <span>Historial</span>
@@ -511,11 +509,7 @@ export default function Home() {
             {(currentRole === 'vendedor' || currentRole === 'admin') && (
               <button
                 onClick={() => setActiveTab('aprobaciones')}
-                className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
-                  activeTab === 'aprobaciones'
-                    ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
-                }`}
+                className={getTabClass('aprobaciones')}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Cotizaciones pendientes</span>
@@ -526,23 +520,15 @@ export default function Home() {
             {isAdminMode && (
               <button
                 onClick={() => setActiveTab('administracion')}
-                className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
-                  activeTab === 'administracion'
-                    ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
-                }`}
+                className={getTabClass('administracion')}
               >
                 <Settings className="w-4 h-4" />
                 <span>Panel de Administración</span>
                 {currentRole !== 'admin' && (
-                  <ShieldAlert className="w-3.5 h-3.5 text-slate-600 animate-pulse" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-slate-500 animate-pulse" />
                 )}
               </button>
             )}
-          </div>
-
-          <div className="text-xs text-slate-500 font-medium hidden sm:block">
-            Portal interno de consulta de infraestructura • Site Solutions Inc.
           </div>
         </div>
 
@@ -575,7 +561,7 @@ export default function Home() {
       <footer className="mt-auto bg-slate-950 border-t border-slate-900 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-xs text-slate-500">
-            © 2026 Site Solutions Inc. Todos los derechos reservados.
+            © 2026 Site Solutions Inc. • Portal interno de consulta de infraestructura.
           </p>
           <div className="flex gap-4 text-xs text-slate-500 font-medium">
             <span className="flex items-center gap-1.5">
