@@ -504,7 +504,7 @@ export default function Home() {
               }`}
             >
               <History className="w-4 h-4" />
-              <span>Autorización de Cotizaciones</span>
+              <span>Historial</span>
             </button>
             
             {/* Administration Tab is unlocked when Admin Mode is active */}
