@@ -35,6 +35,9 @@ export interface ChatMessage {
     warehouse?: string;
     specs?: string;
     solution?: string;
+    manual_url?: string;
+    manual_name?: string;
+    hideQuoteButton?: boolean;
   };
 }
 

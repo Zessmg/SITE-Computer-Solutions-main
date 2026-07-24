@@ -585,6 +585,12 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
         const manualUrl = `/documents?file=${manualName}`;
 
+        const isFicha = cleanQuery.includes('ficha');
+        const isCompat = cleanQuery.includes('compatib') || cleanQuery.includes('compatible');
+        const isGarant = cleanQuery.includes('garant');
+        const isManual = cleanQuery.includes('manual');
+        const isSpecRequest = isFicha || isCompat || isGarant || isManual;
+
         metadata = {
           sku: matchedProduct.sku,
           name: matchedProduct.name,
@@ -594,7 +600,8 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           specs: specsText,
           solution: solutionText,
           manual_url: manualUrl,
-          manual_name: manualName
+          manual_name: manualName,
+          hideQuoteButton: isSpecRequest
         };
 
         // Guardar automáticamente en el historial de consultas generales
@@ -1003,27 +1010,29 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
                       <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />
                       Ficha verificada
                     </div>
-                    <button
-                      onClick={() => handleApprove(msg)}
-                      disabled={quotedSkus.includes(msg.metadata.sku)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        quotedSkus.includes(msg.metadata.sku)
-                          ? 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
-                          : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-950/20 active:scale-95'
-                      }`}
-                    >
-                      {quotedSkus.includes(msg.metadata.sku) ? (
-                        <>
-                          <Clock className="w-3.5 h-3.5 text-amber-500/80" />
-                          <span>Enviada para Autorización</span>
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-3.5 h-3.5 text-cyan-200" />
-                          <span>Crear Cotización (Por Autorizar)</span>
-                        </>
-                      )}
-                    </button>
+                    {!msg.metadata.hideQuoteButton && (
+                      <button
+                        onClick={() => handleApprove(msg)}
+                        disabled={quotedSkus.includes(msg.metadata.sku)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          quotedSkus.includes(msg.metadata.sku)
+                            ? 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
+                            : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-950/20 active:scale-95'
+                        }`}
+                      >
+                        {quotedSkus.includes(msg.metadata.sku) ? (
+                          <>
+                            <Clock className="w-3.5 h-3.5 text-amber-500/80" />
+                            <span>Enviada para Autorización</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-3.5 h-3.5 text-cyan-200" />
+                            <span>Crear Cotización (Por Autorizar)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
