@@ -561,31 +561,6 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                 </div>
               </div>
 
-              <div className="border-t border-slate-850 pt-4 space-y-3">
-                <span className="text-xs font-bold text-amber-500 block">Soporte Técnico (Fallas Comunes)</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-slate-500 font-semibold block">Falla Común / Alerta</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Código BMC LED 0xAF"
-                      value={newProductForm.common_issue}
-                      onChange={(e) => setNewProductForm({...newProductForm, common_issue: e.target.value})}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-slate-500 font-semibold block">Solución Técnica Sugerida</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Verificar ventilador #3"
-                      value={newProductForm.solution}
-                      onChange={(e) => setNewProductForm({...newProductForm, solution: e.target.value})}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
 
               <div className="px-6 py-4 bg-slate-950/80 border-t border-slate-850 -mx-6 -mb-6 flex justify-end gap-3">
                 <button
