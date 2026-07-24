@@ -379,22 +379,10 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                   </div>
 
                   {selectedRecord.status === 'Pendiente' ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleUpdateStatus(selectedRecord.id, 'Aprobada')}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-650 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-emerald-950/20"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        Aprobar
-                      </button>
-                      <button
-                        onClick={() => handleUpdateStatus(selectedRecord.id, 'Rechazada')}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-650 hover:bg-rose-650 text-white rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-md shadow-rose-950/20"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Rechazar
-                      </button>
-                    </div>
+                    <span className="text-[11px] text-amber-550 font-bold flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      Pendiente de validación en la pestaña de Aprobaciones.
+                    </span>
                   ) : (
                     <span className="text-xs text-slate-550 flex items-center gap-1.5 font-bold">
                       <ShieldAlert className="w-4 h-4 text-cyan-500" />

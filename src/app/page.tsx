@@ -12,6 +12,7 @@ import {
 } from '@/lib/supabase/client';
 import ChatInterface from '@/components/ui/ChatInterface';
 import HistoryPanel from '@/components/ui/HistoryPanel';
+import ApprovalsPanel from '@/components/ui/ApprovalsPanel';
 import AdminPanel from '@/components/ui/AdminPanel';
 import ProductPanel from '@/components/ui/ProductPanel';
 import { 
@@ -33,7 +34,7 @@ import {
 
 export default function Home() {
   const [currentRole, setCurrentRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
-  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'administracion' | 'productos'>('consulta');
+  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'aprobaciones' | 'administracion' | 'productos'>('consulta');
   const [isAdminMode, setIsAdminMode] = useState(false);
   
   // Auth state
@@ -506,6 +507,20 @@ export default function Home() {
               <History className="w-4 h-4" />
               <span>Historial</span>
             </button>
+
+            {(currentRole === 'vendedor' || currentRole === 'admin') && (
+              <button
+                onClick={() => setActiveTab('aprobaciones')}
+                className={`flex items-center gap-2 px-5 py-4 text-xs font-bold transition-all border-b-2 ${
+                  activeTab === 'aprobaciones'
+                    ? 'border-cyan-500 text-cyan-400 bg-cyan-950/5'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-800'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Cotizaciones pendientes</span>
+              </button>
+            )}
             
             {/* Administration Tab is unlocked when Admin Mode is active */}
             {isAdminMode && (
@@ -543,6 +558,10 @@ export default function Home() {
 
           {activeTab === 'historial' && (
             <HistoryPanel currentUser={user} />
+          )}
+
+          {activeTab === 'aprobaciones' && (
+            <ApprovalsPanel currentUser={user} />
           )}
 
           {activeTab === 'administracion' && (
