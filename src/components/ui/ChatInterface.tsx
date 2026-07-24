@@ -641,12 +641,13 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
 
         const manualUrl = `/documents?file=${manualName}`;
 
-        const isFicha = cleanQuery.includes('ficha');
-        const isCompat = cleanQuery.includes('compatib') || cleanQuery.includes('compatible');
-        const isGarant = cleanQuery.includes('garant');
-        const isManual = cleanQuery.includes('manual');
-        const isPrecio = cleanQuery.includes('precio');
-        const isSpecRequest = isFicha || isCompat || isGarant || isManual || isPrecio;
+        // The quote button should ONLY show up if the query explicitly asks for a quote
+        const isQuoteRequest = 
+          cleanQuery.includes('cotiza') || 
+          cleanQuery.includes('cotización') || 
+          cleanQuery.includes('cotizacion') || 
+          cleanQuery.includes('cotizar') || 
+          cleanQuery.includes('presupuesto');
 
         metadata = {
           sku: matchedProduct.sku,
@@ -658,7 +659,7 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           solution: solutionText,
           manual_url: manualUrl,
           manual_name: manualName,
-          hideQuoteButton: isSpecRequest
+          hideQuoteButton: !isQuoteRequest
         };
 
         // Guardar automáticamente en el historial de consultas generales
