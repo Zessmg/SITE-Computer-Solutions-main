@@ -16,6 +16,10 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
+  // Date Picker filter state
+  const [dateFilter, setDateFilter] = useState('');
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isConfirmingBulkDelete, setIsConfirmingBulkDelete] = useState(false);
@@ -50,7 +54,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     setCurrentPage(1);
     setSelectedIds([]);
     setIsConfirmingBulkDelete(false);
-  }, [filterType, searchFilter]);
+  }, [filterType, searchFilter, dateFilter]);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -131,8 +135,28 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
     return dateStr;
   };
 
+  // Extract the local date string (YYYY-MM-DD) from the record's display context
+  const getRecordLocalDate = (item: HistoryRecord): string => {
+    if (item.metadata?.approvedAt) {
+      try {
+        const d = new Date(item.metadata.approvedAt);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch (e) {}
+    }
+    return item.date;
+  };
+
   // Local filtering logic based on selected filterType
   const filteredHistory = history.filter(item => {
+    // 0. Filter by calendar date if selected (aligned with local timezone)
+    if (dateFilter) {
+      const recordLocalDate = getRecordLocalDate(item);
+      if (recordLocalDate !== dateFilter) return false;
+    }
+
     // 1. If search filter is empty, apply status type filter subsets
     if (!searchFilter.trim()) {
       if (filterType === 'Estado: Aprobada') return item.status === 'Aprobada';
@@ -386,7 +410,44 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                     className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
                   />
                 </th>
-                <th className="px-6 py-4">FECHA</th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-800/30 hover:text-slate-200 transition-all select-none relative"
+                  onClick={() => {
+                    if (dateInputRef.current) {
+                      if (typeof (dateInputRef.current as any).showPicker === 'function') {
+                        (dateInputRef.current as any).showPicker();
+                      } else {
+                        dateInputRef.current.click();
+                      }
+                    }
+                  }}
+                  title="Haz clic para abrir el calendario y filtrar por fecha"
+                >
+                  <span className="flex items-center gap-1.5 justify-start">
+                    <span>FECHA</span>
+                    <Calendar className={`w-3.5 h-3.5 ${dateFilter ? 'text-cyan-400 font-extrabold' : 'text-slate-500'}`} />
+                    {dateFilter && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Avoid triggering picker again
+                          setDateFilter('');
+                        }}
+                        className="ml-1 p-0.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-all"
+                        title="Limpiar filtro de fecha"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </span>
+                  <input
+                    type="date"
+                    ref={dateInputRef}
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="absolute opacity-0 w-0 h-0 pointer-events-none"
+                    style={{ left: 0, bottom: 0 }}
+                  />
+                </th>
                 <th className="px-6 py-4">CONSULTA</th>
                 <th className="px-6 py-4 text-center">ESTADO</th>
               </tr>
