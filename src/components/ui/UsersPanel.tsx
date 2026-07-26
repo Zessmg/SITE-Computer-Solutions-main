@@ -447,7 +447,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
                   type="submit"
                   className="bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md shadow-cyan-950/20"
                 >
-                  Guardar en Catálogo
+                  Guardar
                 </button>
               </div>
             </form>
