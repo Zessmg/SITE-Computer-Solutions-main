@@ -55,6 +55,7 @@ export default function Home() {
   // Auth state
   const [user, setUser] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [baseRole, setBaseRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
   const [selectedLoginEmail, setSelectedLoginEmail] = useState('admin@sitesolutions.com');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -87,34 +88,30 @@ export default function Home() {
           
           if (registered) {
             const roleStr = registered.role.toLowerCase();
+            let resolved: 'vendedor' | 'soporte' | 'tecnico' | 'admin' = 'vendedor';
             if (roleStr === 'administrador' || roleStr === 'admin') {
-              setCurrentRole('admin');
-              setIsAdminMode(true);
+              resolved = 'admin';
             } else if (roleStr === 'tecnico' || roleStr === 'técnico') {
-              setCurrentRole('tecnico');
-              setIsAdminMode(false);
+              resolved = 'tecnico';
             } else if (roleStr === 'soporte') {
-              setCurrentRole('soporte');
-              setIsAdminMode(false);
-            } else {
-              setCurrentRole('vendedor');
-              setIsAdminMode(false);
+              resolved = 'soporte';
             }
+            setBaseRole(resolved);
+            setCurrentRole(resolved);
+            setIsAdminMode(resolved === 'admin');
           } else {
             // Asignación por defecto según el prefijo del correo si no está en el directorio
+            let resolved: 'vendedor' | 'soporte' | 'tecnico' | 'admin' = 'vendedor';
             if (email.startsWith('admin') || email === 'geeraa123@gmail.com') {
-              setCurrentRole('admin');
-              setIsAdminMode(true);
+              resolved = 'admin';
             } else if (email.startsWith('soporte')) {
-              setCurrentRole('soporte');
-              setIsAdminMode(false);
+              resolved = 'soporte';
             } else if (email.startsWith('tecnico')) {
-              setCurrentRole('tecnico');
-              setIsAdminMode(false);
-            } else {
-              setCurrentRole('vendedor');
-              setIsAdminMode(false);
+              resolved = 'tecnico';
             }
+            setBaseRole(resolved);
+            setCurrentRole(resolved);
+            setIsAdminMode(resolved === 'admin');
           }
           setActiveTab('consulta');
         }
@@ -449,85 +446,92 @@ export default function Home() {
           </div>
 
           {/* Role selector */}
-          <div className="flex items-center gap-3">
-            {!isAdminMode ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">Rol: <span className="text-cyan-400 capitalize font-semibold">{currentRole}</span></span>
-                <button
-                  onClick={() => {
-                    setIsAdminMode(true);
-                    setCurrentRole('admin');
-                    setActiveTab('administracion');
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-rose-950/10"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>Modo Admin</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs text-rose-400 font-bold hidden md:inline animate-pulse">👑 Cambiar Perfil (Admin):</span>
-                <div className="flex bg-slate-900/80 border border-slate-800 p-0.5 rounded-xl font-medium">
+          {baseRole === 'admin' ? (
+            <div className="flex items-center gap-3">
+              {!isAdminMode ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Rol: <span className="text-cyan-400 capitalize font-semibold">{currentRole}</span></span>
                   <button
-                    onClick={() => setCurrentRole('vendedor')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                      currentRole === 'vendedor' 
-                        ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Briefcase className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Ventas</span>
-                  </button>
-                  <button
-                    onClick={() => setCurrentRole('soporte')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                      currentRole === 'soporte' 
-                        ? 'bg-slate-850 text-amber-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Wrench className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Soporte</span>
-                  </button>
-                  <button
-                    onClick={() => setCurrentRole('tecnico')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                      currentRole === 'tecnico' 
-                        ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Cpu className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Técnico</span>
-                  </button>
-                  <button
-                    onClick={() => setCurrentRole('admin')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                      currentRole === 'admin' 
-                        ? 'bg-slate-850 text-rose-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    onClick={() => {
+                      setIsAdminMode(true);
+                      setCurrentRole('admin');
+                      setActiveTab('administracion');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-rose-950/10"
                   >
                     <Settings className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Admin TI</span>
+                    <span>Modo Admin</span>
                   </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setIsAdminMode(false);
-                    setCurrentRole('vendedor');
-                    setActiveTab('consulta');
-                  }}
-                  className="p-1.5 bg-slate-905 border border-slate-800 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-200 text-xs font-bold transition-all active:scale-95"
-                  title="Salir de Modo Administrador"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs text-rose-400 font-bold hidden md:inline animate-pulse">👑 Cambiar Perfil (Admin):</span>
+                  <div className="flex bg-slate-900/80 border border-slate-800 p-0.5 rounded-xl font-medium">
+                    <button
+                      onClick={() => setCurrentRole('vendedor')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                        currentRole === 'vendedor' 
+                          ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span className="hidden lg:inline">Ventas</span>
+                    </button>
+                    <button
+                      onClick={() => setCurrentRole('soporte')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                        currentRole === 'soporte' 
+                          ? 'bg-slate-850 text-amber-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span className="hidden lg:inline">Soporte</span>
+                    </button>
+                    <button
+                      onClick={() => setCurrentRole('tecnico')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                        currentRole === 'tecnico' 
+                          ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span className="hidden lg:inline">Técnico</span>
+                    </button>
+                    <button
+                      onClick={() => setCurrentRole('admin')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                        currentRole === 'admin' 
+                          ? 'bg-slate-850 text-rose-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span className="hidden lg:inline">Admin TI</span>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsAdminMode(false);
+                      setCurrentRole('vendedor');
+                      setActiveTab('consulta');
+                    }}
+                    className="p-1.5 bg-slate-905 border border-slate-800 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-200 text-xs font-bold transition-all active:scale-95"
+                    title="Salir de Modo Administrador"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 shadow-sm shadow-slate-950/20">
+              <span className="text-slate-500 mr-1">Rol:</span>
+              <span className="text-cyan-400 capitalize font-bold">{currentRole === 'tecnico' ? 'Técnico' : currentRole}</span>
+            </div>
+          )}
 
           {/* User Profile & Logout */}
           <div className="flex items-center gap-3">
