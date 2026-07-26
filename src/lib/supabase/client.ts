@@ -1717,3 +1717,101 @@ export async function updateProduct(id: string, updates: { price: number; descri
   }
   return false;
 }
+
+// ==============================================================
+// USER & ROLE DATA Operations (Local Storage & Supabase Sync)
+// ==============================================================
+
+const SEED_USERS = [
+  { id: 'u-1', name: 'M. Garcia', email: 'm.garcia@site.com', role: 'Vendedor', status: 'Activo' },
+  { id: 'u-2', name: 'L. Reyes', email: 'l.reyes@site.com', role: 'Tecnico', status: 'Activo' },
+  { id: 'u-3', name: 'A. Diaz', email: 'a.diaz@site.com', role: 'Vendedor', status: 'Bloqueado' },
+  { id: 'u-4', name: 'R. Salas', email: 'r.salas@site.com', role: 'Administrador', status: 'Activo' }
+];
+
+export async function fetchUsersList(searchQuery: string = ''): Promise<any[]> {
+  let list: any[] = [];
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('users_roles')
+        .select('*')
+        .order('name', { ascending: true });
+      if (!error && data) {
+        list = data;
+      } else {
+        console.warn('Supabase fetchUsersList error, falling back:', error);
+        list = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
+      }
+    } catch (err) {
+      console.error('Supabase fetchUsersList exception:', err);
+      list = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
+    }
+  } else {
+    list = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(u => 
+      u.name.toLowerCase().includes(q) || 
+      u.email.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
+    );
+  }
+  return list;
+}
+
+export async function insertUserRecord(newUser: { name: string; email: string; role: string; status: string }): Promise<any> {
+  const userRecord = {
+    id: 'u-' + Math.random().toString(36).substr(2, 9),
+    ...newUser
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('users_roles')
+        .insert([userRecord])
+        .select();
+      if (!error && data && data.length > 0) {
+        return data[0];
+      }
+      console.warn('Supabase insertUserRecord error, falling back:', error);
+    } catch (err) {
+      console.error('Supabase insertUserRecord exception:', err);
+    }
+  }
+
+  // Fallback
+  const users = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
+  users.push(userRecord);
+  setLocalStorageData('site_solutions_users', users);
+  return userRecord;
+}
+
+export async function updateUserRecord(id: string, updates: { name?: string; email?: string; role?: string; status?: string }): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('users_roles')
+        .update(updates)
+        .eq('id', id);
+      
+      if (!error) return true;
+      console.warn('Supabase updateUserRecord error, falling back:', error);
+    } catch (err) {
+      console.error('Supabase updateUserRecord exception:', err);
+    }
+  }
+
+  // Fallback
+  const users = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
+  const index = users.findIndex(u => u.id === id);
+  if (index !== -1) {
+    users[index] = { ...users[index], ...updates };
+    setLocalStorageData('site_solutions_users', users);
+    return true;
+  }
+  return false;
+}

@@ -15,6 +15,7 @@ import HistoryPanel from '@/components/ui/HistoryPanel';
 import ApprovalsPanel from '@/components/ui/ApprovalsPanel';
 import AdminPanel from '@/components/ui/AdminPanel';
 import ProductPanel from '@/components/ui/ProductPanel';
+import UsersPanel from '@/components/ui/UsersPanel';
 import { 
   Briefcase, 
   Wrench, 
@@ -34,7 +35,7 @@ import {
 
 export default function Home() {
   const [currentRole, setCurrentRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
-  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'aprobaciones' | 'administracion' | 'productos'>('consulta');
+  const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'aprobaciones' | 'administracion' | 'productos' | 'usuarios'>('consulta');
   const [isAdminMode, setIsAdminMode] = useState(false);
   
   const getTabClass = (tabId: string) => {
@@ -516,6 +517,16 @@ export default function Home() {
               </button>
             )}
             
+            {isAdminMode && (
+              <button
+                onClick={() => setActiveTab('usuarios')}
+                className={getTabClass('usuarios')}
+              >
+                <Users className="w-4 h-4" />
+                <span>Usuarios</span>
+              </button>
+            )}
+
             {/* Administration Tab is unlocked when Admin Mode is active */}
             {isAdminMode && (
               <button
@@ -552,6 +563,10 @@ export default function Home() {
 
           {activeTab === 'administracion' && (
             <AdminPanel currentRole={currentRole} />
+          )}
+
+          {activeTab === 'usuarios' && (
+            <UsersPanel currentUser={user} />
           )}
         </div>
 
