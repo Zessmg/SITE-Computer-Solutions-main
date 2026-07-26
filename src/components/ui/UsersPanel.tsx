@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchUsersList, insertUserRecord, updateUserRecord } from '@/lib/supabase/client';
 import { 
   Plus, 
@@ -10,7 +10,8 @@ import {
   UserX,
   X, 
   CheckCircle2, 
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
 
 interface UsersPanelProps {
@@ -21,11 +22,36 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Dropdown status filters states
+  const [roleFilter, setRoleFilter] = useState('Todos');
+  const [statusFilter, setStatusFilter] = useState('Todos');
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target as Node)) {
+        setIsRoleDropdownOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setIsStatusDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // New user form state
   const [newUserForm, setNewUserForm] = useState({
@@ -47,7 +73,16 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
     setLoading(true);
     try {
       const data = await fetchUsersList(searchQuery);
-      setUsers(data);
+      
+      let filtered = data;
+      if (roleFilter !== 'Todos') {
+        filtered = filtered.filter(u => u.role === roleFilter);
+      }
+      if (statusFilter !== 'Todos') {
+        filtered = filtered.filter(u => u.status === statusFilter);
+      }
+      
+      setUsers(filtered);
     } catch (err) {
       console.error('Error fetching users:', err);
     } finally {
@@ -57,7 +92,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
 
   useEffect(() => {
     loadUsers();
-  }, [searchQuery]);
+  }, [searchQuery, roleFilter, statusFilter]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -145,10 +180,10 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
       )}
 
       {/* Filter toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center p-4 bg-slate-950/60 border border-slate-900/80 rounded-2xl backdrop-blur-xl relative z-20">
+      <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center p-4 bg-slate-950/60 border border-slate-900/80 rounded-2xl backdrop-blur-xl relative z-20">
         
         {/* Search Input Box */}
-        <div className="flex-1 max-w-sm relative">
+        <div className="flex-1 max-w-xs relative">
           <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
             <Search className="w-4 h-4" />
           </span>
@@ -161,8 +196,78 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
           />
         </div>
 
-        {/* Add user button */}
+        {/* Dropdowns Filters and Add button */}
         <div className="flex items-center gap-3 justify-end shrink-0">
+          
+          {/* Role Dropdown */}
+          <div className="relative" ref={roleDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/60 hover:bg-slate-855 border border-slate-850 hover:border-slate-800 rounded-xl text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98]"
+            >
+              <span>Rol: <strong className="text-slate-200">{roleFilter}</strong></span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+
+            {isRoleDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-40 rounded-xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-30 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                {['Todos', 'Vendedor', 'Tecnico', 'Soporte', 'Administrador'].map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => {
+                      setRoleFilter(role);
+                      setIsRoleDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-xs font-semibold transition-all ${
+                      roleFilter === role 
+                        ? 'bg-cyan-950/40 text-cyan-400 font-bold' 
+                        : 'text-slate-300 hover:bg-slate-850 hover:text-slate-100'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status Dropdown */}
+          <div className="relative" ref={statusDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/60 hover:bg-slate-855 border border-slate-850 hover:border-slate-800 rounded-xl text-xs font-semibold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98]"
+            >
+              <span>Estado: <strong className="text-slate-200">{statusFilter}</strong></span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+
+            {isStatusDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-36 rounded-xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-30 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                {['Todos', 'Activo', 'Bloqueado'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(status);
+                      setIsStatusDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-xs font-semibold transition-all ${
+                      statusFilter === status 
+                        ? 'bg-cyan-950/40 text-cyan-400 font-bold' 
+                        : 'text-slate-300 hover:bg-slate-850 hover:text-slate-100'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add user button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-650 hover:bg-emerald-555 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-emerald-950/20"
