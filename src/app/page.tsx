@@ -10,6 +10,7 @@ import {
   signInWithGoogle, 
   signInWithEmailPassword,
   signUpWithEmailPassword,
+  fetchUsersList,
   signOutUser 
 } from '@/lib/supabase/client';
 import ChatInterface from '@/components/ui/ChatInterface';
@@ -78,25 +79,44 @@ export default function Home() {
         setUser(currentUser);
         
         if (currentUser) {
-          // Set initial role automatically based on email address
           const email = currentUser.email?.toLowerCase() || '';
-          if (email.startsWith('admin') || email === 'geeraa123@gmail.com') {
-            setCurrentRole('admin');
-            setIsAdminMode(true);
-            setActiveTab('consulta');
-          } else if (email.startsWith('soporte')) {
-            setCurrentRole('soporte');
-            setIsAdminMode(false);
-            setActiveTab('consulta');
-          } else if (email.startsWith('tecnico')) {
-            setCurrentRole('tecnico');
-            setIsAdminMode(false);
-            setActiveTab('consulta');
+          
+          // Consultar directorio dinámico para encontrar su rol asignado
+          const allUsers = await fetchUsersList();
+          const registered = allUsers.find(u => u.email.toLowerCase().trim() === email);
+          
+          if (registered) {
+            const roleStr = registered.role.toLowerCase();
+            if (roleStr === 'administrador' || roleStr === 'admin') {
+              setCurrentRole('admin');
+              setIsAdminMode(true);
+            } else if (roleStr === 'tecnico' || roleStr === 'técnico') {
+              setCurrentRole('tecnico');
+              setIsAdminMode(false);
+            } else if (roleStr === 'soporte') {
+              setCurrentRole('soporte');
+              setIsAdminMode(false);
+            } else {
+              setCurrentRole('vendedor');
+              setIsAdminMode(false);
+            }
           } else {
-            setCurrentRole('vendedor');
-            setIsAdminMode(false);
-            setActiveTab('consulta');
+            // Asignación por defecto según el prefijo del correo si no está en el directorio
+            if (email.startsWith('admin') || email === 'geeraa123@gmail.com') {
+              setCurrentRole('admin');
+              setIsAdminMode(true);
+            } else if (email.startsWith('soporte')) {
+              setCurrentRole('soporte');
+              setIsAdminMode(false);
+            } else if (email.startsWith('tecnico')) {
+              setCurrentRole('tecnico');
+              setIsAdminMode(false);
+            } else {
+              setCurrentRole('vendedor');
+              setIsAdminMode(false);
+            }
           }
+          setActiveTab('consulta');
         }
       } catch (err) {
         console.error('Error checking user session:', err);
@@ -163,7 +183,7 @@ export default function Home() {
       const { user, error } = await signInWithEmailPassword(emailInput, passwordInput);
       if (error) {
         setLoginError(error);
-        if (isSupabaseConfigured) {
+        if (isSupabaseConfigured && !error.includes('bloqueada')) {
           setShowRegisterOption(true);
         }
       }

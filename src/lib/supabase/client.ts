@@ -684,13 +684,23 @@ export async function signInWithGoogle(email: string = 'admin@sitesolutions.com'
 
 export async function signInWithEmailPassword(email: string, password: string): Promise<{ user: any; error: string | null }> {
   const lowerEmail = email.toLowerCase().trim();
-  const demoEmails = [
-    'admin@sitesolutions.com',
-    'vendedor@sitesolutions.com',
-    'soporte@sitesolutions.com',
-    'tecnico@sitesolutions.com',
-    'geeraa123@gmail.com'
-  ];
+  
+  // Consultar directorio dinámico
+  const allUsers = await fetchUsersList();
+  const registeredUser = allUsers.find(u => u.email.toLowerCase().trim() === lowerEmail);
+  const isBootstrapAdmin = lowerEmail === 'admin@sitesolutions.com';
+
+  if (!registeredUser && !isBootstrapAdmin) {
+    return { user: null, error: 'Usuario no registrado en el sistema.' };
+  }
+
+  if (registeredUser && registeredUser.status === 'Bloqueado') {
+    return { user: null, error: 'Esta cuenta se encuentra bloqueada. Contacte al administrador.' };
+  }
+
+  if (password.length < 4) {
+    return { user: null, error: 'La contraseña debe tener al menos 4 caracteres.' };
+  }
 
   if (isSupabaseConfigured && supabase) {
     try {
@@ -702,55 +712,41 @@ export async function signInWithEmailPassword(email: string, password: string): 
         return { user: data.user, error: null };
       }
       
-      // Fallback a simulación local si el correo demo es válido y la contraseña tiene >= 4 caracteres
-      if (demoEmails.includes(lowerEmail) && password.length >= 4) {
-        const name = lowerEmail.split('@')[0];
-        const fallbackUser = {
-          id: 'u-' + Math.random().toString(36).substr(2, 9),
-          email: lowerEmail,
-          user_metadata: {
-            full_name: name.charAt(0).toUpperCase() + name.slice(1) + ' (Demo)',
-            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
-          }
-        };
-        setLocalStorageData('site_solutions_session', fallbackUser);
-        if (typeof window !== 'undefined') {
-          window.location.reload();
+      // Fallback a simulación local si el correo existe y la contraseña tiene >= 4
+      const name = registeredUser ? registeredUser.name : 'Administrador';
+      const fallbackUser = {
+        id: registeredUser ? registeredUser.id : 'u-admin',
+        email: lowerEmail,
+        user_metadata: {
+          full_name: name + ' (Demo)',
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
         }
-        return { user: fallbackUser, error: null };
+      };
+      setLocalStorageData('site_solutions_session', fallbackUser);
+      if (typeof window !== 'undefined') {
+        window.location.reload();
       }
-
-      if (error) {
-        return { user: null, error: error.message };
-      }
+      return { user: fallbackUser, error: null };
     } catch (err: any) {
-      // Si hay una excepción de red, permitimos que continúe al fallback local
+      // Excepción
     }
   }
 
   // Fallback local storage login simulation
-  if (!demoEmails.includes(lowerEmail)) {
-    return { user: null, error: 'Usuario no registrado en el sistema demo.' };
-  }
-
-  if (password.length < 4) {
-    return { user: null, error: 'La contraseña debe tener al menos 4 caracteres.' };
-  }
-
-  const name = lowerEmail.split('@')[0];
-  const user = {
-    id: 'u-' + Math.random().toString(36).substr(2, 9),
+  const name = registeredUser ? registeredUser.name : 'Administrador';
+  const fallbackUser = {
+    id: registeredUser ? registeredUser.id : 'u-admin',
     email: lowerEmail,
     user_metadata: {
-      full_name: name.charAt(0).toUpperCase() + name.slice(1) + ' (Demo)',
+      full_name: name + ' (Demo)',
       avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
     }
   };
-  setLocalStorageData('site_solutions_session', user);
+  setLocalStorageData('site_solutions_session', fallbackUser);
   if (typeof window !== 'undefined') {
     window.location.reload();
   }
-  return { user, error: null };
+  return { user: fallbackUser, error: null };
 }
 
 /**
