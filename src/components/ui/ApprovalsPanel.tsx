@@ -2,16 +2,50 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchHistory, updateApprovalStatus, HistoryRecord } from '@/lib/supabase/client';
-import { Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, FileText, CheckCircle2, User } from 'lucide-react';
+import { Check, X, ShieldAlert, Sparkles, Clock, AlertCircle, FileText, CheckCircle2, User, Search } from 'lucide-react';
 
 interface ApprovalsPanelProps {
   currentUser?: any;
 }
 
+// Helper to parse products from metadata safely (supports both single and multi-product formats)
+const getProductsList = (record: HistoryRecord) => {
+  if (record.metadata?.products && Array.isArray(record.metadata.products)) {
+    return record.metadata.products;
+  }
+  if (record.metadata?.sku) {
+    return [{
+      sku: record.metadata.sku,
+      name: record.metadata.name || record.query,
+      quantity: 1,
+      price: record.metadata.price || 0
+    }];
+  }
+  return [];
+};
+
 export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
   const [pendingQuotes, setPendingQuotes] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredQuotes = pendingQuotes.filter(q => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    
+    const client = (q.client || '').toLowerCase();
+    const queryStr = (q.query || '').toLowerCase();
+    const id = (q.id || '').toLowerCase();
+    
+    const products = getProductsList(q);
+    const hasMatchingProduct = products.some(p => 
+      (p.name || '').toLowerCase().includes(term) || 
+      (p.sku || '').toLowerCase().includes(term)
+    );
+    
+    return client.includes(term) || queryStr.includes(term) || id.includes(term) || hasMatchingProduct;
+  });
 
   const loadPending = async () => {
     setLoading(true);
@@ -44,22 +78,6 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
     } finally {
       setActioningId(null);
     }
-  };
-
-  // Helper to parse products from metadata safely (supports both single and multi-product formats)
-  const getProductsList = (record: HistoryRecord) => {
-    if (record.metadata?.products && Array.isArray(record.metadata.products)) {
-      return record.metadata.products;
-    }
-    if (record.metadata?.sku) {
-      return [{
-        sku: record.metadata.sku,
-        name: record.metadata.name || record.query,
-        quantity: 1,
-        price: record.metadata.price || 0
-      }];
-    }
-    return [];
   };
 
   const getCompatibilityStatus = (products: any[]) => {
@@ -100,6 +118,35 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
         </div>
       </div>
 
+      {/* Search and Filters Bar */}
+      {!loading && pendingQuotes.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-900/20 p-4 border border-slate-800/80 rounded-2xl backdrop-blur-xl">
+          <div className="relative w-full sm:max-w-md">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-slate-500" />
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar por cliente, SKU, ID, nombre de equipo..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-955/60 border border-slate-850 hover:border-slate-800 focus:border-cyan-500/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-350 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className="text-[10px] text-slate-500 font-semibold font-mono self-end sm:self-center">
+            Mostrando {filteredQuotes.length} de {pendingQuotes.length} cotizaciones
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-cyan-500 animate-spin" />
@@ -118,10 +165,23 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
             </p>
           </div>
         </div>
+      ) : filteredQuotes.length === 0 ? (
+        /* Sin resultados */
+        <div className="bg-slate-900/20 border border-slate-800/80 rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4 backdrop-blur-xl shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700/40 flex items-center justify-center mx-auto shadow-lg shadow-slate-950/20">
+            <AlertCircle className="w-7 h-7 text-slate-400 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-slate-100">Sin resultados</h3>
+            <p className="text-xs text-slate-400 leading-relaxed px-4">
+              No se encontraron cotizaciones pendientes que coincidan con tu búsqueda **"{searchTerm}"**. Intenta con otro término.
+            </p>
+          </div>
+        </div>
       ) : (
         /* Grid of pending quote cards */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {pendingQuotes.map((record) => {
+          {filteredQuotes.map((record) => {
             const products = getProductsList(record);
             const total = record.metadata?.total || record.metadata?.price || 0;
             const compatibility = getCompatibilityStatus(products);
