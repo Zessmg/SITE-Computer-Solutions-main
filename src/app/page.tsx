@@ -8,6 +8,8 @@ import {
   fetchProducts,
   getCurrentUser, 
   signInWithGoogle, 
+  signInWithEmailPassword,
+  signUpWithEmailPassword,
   signOutUser 
 } from '@/lib/supabase/client';
 import ChatInterface from '@/components/ui/ChatInterface';
@@ -30,6 +32,7 @@ import {
   Layers, 
   CheckCircle2, 
   Users,
+  AlertCircle,
   LogOut
 } from 'lucide-react';
 
@@ -52,6 +55,10 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [selectedLoginEmail, setSelectedLoginEmail] = useState('admin@sitesolutions.com');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   // Dashboard Metrics State
   const [metrics, setMetrics] = useState({
@@ -141,6 +148,59 @@ export default function Home() {
     }
   };
 
+  const [showRegisterOption, setShowRegisterOption] = useState(false);
+
+  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setShowRegisterOption(false);
+    if (!emailInput || !passwordInput) {
+      setLoginError('Por favor ingrese su correo y contraseña.');
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      const { user, error } = await signInWithEmailPassword(emailInput, passwordInput);
+      if (error) {
+        setLoginError(error);
+        if (isSupabaseConfigured) {
+          setShowRegisterOption(true);
+        }
+      }
+    } catch (err: any) {
+      console.error('Login failed:', err);
+      setLoginError('Error al iniciar sesión. Inténtalo de nuevo.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleEmailPasswordRegister = async () => {
+    setLoginError(null);
+    if (!emailInput || !passwordInput) {
+      setLoginError('Por favor ingrese correo y contraseña.');
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      const { error: signUpError } = await signUpWithEmailPassword(emailInput, passwordInput);
+      if (signUpError) {
+        setLoginError(signUpError);
+        return;
+      }
+      // Auto login after sign up
+      const { error: signInError } = await signInWithEmailPassword(emailInput, passwordInput);
+      if (signInError) {
+        setLoginError(signInError);
+      }
+    } catch (err: any) {
+      console.error('Registration failed:', err);
+      setLoginError('Error al registrar la cuenta. Asegúrate de ingresar un correo corporativo válido.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOutUser();
@@ -224,9 +284,84 @@ export default function Home() {
           <div className="text-center space-y-1.5">
             <h2 className="text-sm font-semibold text-slate-200">Ingreso al Asistente de IA</h2>
             <p className="text-xs text-slate-400 leading-relaxed px-4">
-              Conéctate de forma segura con tu cuenta de correo corporativa de Google.
+              Ingresa tus credenciales corporativas o accede mediante Google.
             </p>
           </div>
+
+          {/* Email / Password Form */}
+          <form onSubmit={handleEmailPasswordLogin} className="space-y-4">
+            {loginError && (
+              <div className="p-3 bg-rose-950/40 border border-rose-800/40 rounded-xl space-y-2 text-xs text-rose-400 animate-in fade-in duration-205 flex flex-col">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+                {showRegisterOption && (
+                  <button
+                    type="button"
+                    onClick={handleEmailPasswordRegister}
+                    className="text-left text-[10px] text-cyan-400 hover:text-cyan-300 font-bold underline transition-all self-start mt-1"
+                  >
+                    ¿Es tu primera vez? Regístrala dando clic aquí
+                  </button>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-450 font-bold uppercase block">Correo Electrónico</label>
+              <input
+                type="email"
+                required
+                placeholder="usuario@sitesolutions.com"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-450 font-bold uppercase block">Contraseña</label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-650 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-500 hover:from-cyan-500 hover:to-blue-400 disabled:opacity-50 text-white rounded-xl py-3 text-xs font-bold transition-all duration-200 active:scale-[0.98] shadow-lg shadow-cyan-950/20"
+            >
+              {isLoggingIn ? 'Verificando credenciales...' : 'Ingresar'}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-850/60"></div>
+            <span className="flex-shrink mx-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">O continuar con</span>
+            <div className="flex-grow border-t border-slate-850/60"></div>
+          </div>
+
+          {/* Social Google Login Button */}
+          <button
+            type="button"
+            onClick={handleLogin}
+            className="w-full bg-white hover:bg-slate-100 text-slate-900 rounded-xl py-3.5 text-xs font-bold transition-all duration-200 active:scale-98 flex items-center justify-center gap-3 shadow-lg shadow-white/5 font-semibold"
+          >
+            <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-1.11 2.76-2.39 3.62v3.02h3.86c2.26-2.09 3.67-5.17 3.67-8.47z" />
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3.02c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.13C3.26 22.25 7.37 24 12 24z" />
+              <path fill="#FBBC05" d="M5.27 14.27c-.25-.72-.39-1.5-.39-2.3 0-.8.14-1.58.39-2.3V6.54H1.29C.47 8.18 0 10.04 0 12s.47 3.82 1.29 5.46l3.98-3.19z" />
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.26 1.75 1.29 4.75l3.98 3.19c.95-2.85 3.6-4.96 6.73-4.96z" />
+            </svg>
+            <span>Iniciar Sesión con Google</span>
+          </button>
 
           {/* Fallback Role Selector (Helper for testing different profiles without real Supabase connection) */}
           {!isSupabaseConfigured && (
@@ -251,20 +386,6 @@ export default function Home() {
               </select>
             </div>
           )}
-
-          {/* Social Google Login Button */}
-          <button
-            onClick={handleLogin}
-            className="w-full bg-white hover:bg-slate-100 text-slate-900 rounded-xl py-3.5 text-xs font-bold transition-all duration-200 active:scale-98 flex items-center justify-center gap-3 shadow-lg shadow-white/5 font-semibold"
-          >
-            <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-1.11 2.76-2.39 3.62v3.02h3.86c2.26-2.09 3.67-5.17 3.67-8.47z" />
-              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3.02c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.13C3.26 22.25 7.37 24 12 24z" />
-              <path fill="#FBBC05" d="M5.27 14.27c-.25-.72-.39-1.5-.39-2.3 0-.8.14-1.58.39-2.3V6.54H1.29C.47 8.18 0 10.04 0 12s.47 3.82 1.29 5.46l3.98-3.19z" />
-              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.26 1.75 1.29 4.75l3.98 3.19c.95-2.85 3.6-4.96 6.73-4.96z" />
-            </svg>
-            <span>Iniciar Sesión con Google</span>
-          </button>
 
           {/* Database connection badge */}
           <div className="flex items-center justify-center gap-2 pt-2 text-[10px] text-slate-500 font-medium">

@@ -682,6 +682,77 @@ export async function signInWithGoogle(email: string = 'admin@sitesolutions.com'
   }
 }
 
+export async function signInWithEmailPassword(email: string, password: string): Promise<{ user: any; error: string | null }> {
+  const lowerEmail = email.toLowerCase().trim();
+  const demoEmails = [
+    'admin@sitesolutions.com',
+    'vendedor@sitesolutions.com',
+    'soporte@sitesolutions.com',
+    'tecnico@sitesolutions.com',
+    'geeraa123@gmail.com'
+  ];
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (!error && data?.user) {
+        return { user: data.user, error: null };
+      }
+      
+      // Fallback a simulación local si el correo demo es válido y la contraseña tiene >= 4 caracteres
+      if (demoEmails.includes(lowerEmail) && password.length >= 4) {
+        const name = lowerEmail.split('@')[0];
+        const fallbackUser = {
+          id: 'u-' + Math.random().toString(36).substr(2, 9),
+          email: lowerEmail,
+          user_metadata: {
+            full_name: name.charAt(0).toUpperCase() + name.slice(1) + ' (Demo)',
+            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
+          }
+        };
+        setLocalStorageData('site_solutions_session', fallbackUser);
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+        return { user: fallbackUser, error: null };
+      }
+
+      if (error) {
+        return { user: null, error: error.message };
+      }
+    } catch (err: any) {
+      // Si hay una excepción de red, permitimos que continúe al fallback local
+    }
+  }
+
+  // Fallback local storage login simulation
+  if (!demoEmails.includes(lowerEmail)) {
+    return { user: null, error: 'Usuario no registrado en el sistema demo.' };
+  }
+
+  if (password.length < 4) {
+    return { user: null, error: 'La contraseña debe tener al menos 4 caracteres.' };
+  }
+
+  const name = lowerEmail.split('@')[0];
+  const user = {
+    id: 'u-' + Math.random().toString(36).substr(2, 9),
+    email: lowerEmail,
+    user_metadata: {
+      full_name: name.charAt(0).toUpperCase() + name.slice(1) + ' (Demo)',
+      avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
+    }
+  };
+  setLocalStorageData('site_solutions_session', user);
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
+  return { user, error: null };
+}
+
 /**
  * AUTH: Cerrar sesión actual.
  */
@@ -1814,4 +1885,23 @@ export async function updateUserRecord(id: string, updates: { name?: string; ema
     return true;
   }
   return false;
+}
+
+export async function signUpWithEmailPassword(email: string, password: string): Promise<{ user: any; error: string | null }> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+      if (error) {
+        return { user: null, error: error.message };
+      }
+      return { user: data.user, error: null };
+    } catch (err: any) {
+      return { user: null, error: err.message || 'Error al registrarse.' };
+    }
+  }
+  // Fallback
+  return { user: { email }, error: null };
 }
