@@ -829,6 +829,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         const clientName = msg.metadata.clientName || 'Cliente General';
         // Registrar en base de datos la cotización multi-producto
         await insertHistoryRecord({
+          date: new Date().toISOString().split('T')[0],
           client: clientName,
           query: `Cotización Multi-producto (${msg.metadata.products.length} ítems)`,
           response: `Resumen de cotización total de $${msg.metadata.total.toLocaleString('es-MX')} MXN.`,
