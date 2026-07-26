@@ -96,6 +96,29 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       const cleanQuery = normalizeText(userMessage.text);
       let activeStep = quotingState.step;
 
+      // Interceptar intención de cotización en estado inactivo (idle)
+      if (activeStep === 'idle') {
+        const isQuote = cleanQuery.includes('cotizacion') || cleanQuery.includes('cotizaciones') || cleanQuery.includes('cotizar');
+        
+        if (isQuote) {
+          setActiveQuickAccess('cotizaciones');
+          setQuotingState({
+            step: 'waiting_client_name',
+            selectedProducts: []
+          });
+          
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: 'Iniciando Asistente de Cotización. Por favor, escribe el nombre del cliente para comenzar.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // --- WIZARD COTIZACIONES FLOW ---
       if (activeStep === 'confirming_quantity_change') {
         if (cleanQuery === 'si' || cleanQuery === 'sí') {
