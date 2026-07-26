@@ -80,8 +80,8 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
     description: ''
   });
 
-  // Check permission
-  const canModify = currentRole === 'admin' || currentRole === 'vendedor';
+  // Check permission (Solo Admin TI puede agregar, editar o dar de baja)
+  const canModify = currentRole === 'admin';
 
   const loadProducts = async () => {
     setLoading(true);
