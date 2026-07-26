@@ -691,7 +691,7 @@ export async function signInWithEmailPassword(email: string, password: string): 
 
   const defaultDemoEmails = [
     'admin@sitesolutions.com',
-    'vendedor@sitesolutions.com',
+    'ventas@sitesolutions.com',
     'soporte@sitesolutions.com',
     'tecnico@sitesolutions.com',
     'geeraa123@gmail.com'
@@ -1807,9 +1807,9 @@ export async function updateProduct(id: string, updates: { price: number; descri
 // ==============================================================
 
 const SEED_USERS = [
-  { id: 'u-1', name: 'M. Garcia', email: 'm.garcia@site.com', role: 'Vendedor', status: 'Activo' },
+  { id: 'u-1', name: 'M. Garcia', email: 'm.garcia@site.com', role: 'Ventas', status: 'Activo' },
   { id: 'u-2', name: 'L. Reyes', email: 'l.reyes@site.com', role: 'Tecnico', status: 'Activo' },
-  { id: 'u-3', name: 'A. Diaz', email: 'a.diaz@site.com', role: 'Vendedor', status: 'Bloqueado' },
+  { id: 'u-3', name: 'A. Diaz', email: 'a.diaz@site.com', role: 'Ventas', status: 'Bloqueado' },
   { id: 'u-4', name: 'R. Salas', email: 'r.salas@site.com', role: 'Administrador', status: 'Activo' }
 ];
 
@@ -1834,6 +1834,12 @@ export async function fetchUsersList(searchQuery: string = ''): Promise<any[]> {
   } else {
     list = getLocalStorageData<any[]>('site_solutions_users', SEED_USERS);
   }
+
+  // Mapear rol 'Vendedor' a 'Ventas' dinámicamente
+  list = list.map((u: any) => ({
+    ...u,
+    role: u.role === 'Vendedor' ? 'Ventas' : u.role
+  }));
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();

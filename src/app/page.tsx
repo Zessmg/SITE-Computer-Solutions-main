@@ -397,7 +397,7 @@ export default function Home() {
               >
                 <option value="geeraa123@gmail.com">geeraa123@gmail.com (Rol: Administrador - Google)</option>
                 <option value="admin@sitesolutions.com">admin@sitesolutions.com (Rol: Administrador)</option>
-                <option value="vendedor@sitesolutions.com">vendedor@sitesolutions.com (Rol: Ventas)</option>
+                <option value="ventas@sitesolutions.com">ventas@sitesolutions.com (Rol: Ventas)</option>
                 <option value="soporte@sitesolutions.com">soporte@sitesolutions.com (Rol: Soporte)</option>
                 <option value="tecnico@sitesolutions.com">tecnico@sitesolutions.com (Rol: Técnico)</option>
               </select>

@@ -57,7 +57,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
   const [newUserForm, setNewUserForm] = useState({
     name: '',
     email: '',
-    role: 'Vendedor',
+    role: 'Ventas',
     status: 'Activo'
   });
 
@@ -65,7 +65,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-    role: 'Vendedor',
+    role: 'Ventas',
     status: 'Activo'
   });
 
@@ -117,7 +117,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
       setNewUserForm({
         name: '',
         email: '',
-        role: 'Vendedor',
+        role: 'Ventas',
         status: 'Activo'
       });
       loadUsers();
@@ -212,7 +212,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
 
             {isRoleDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 rounded-xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-30 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                {['Todos', 'Vendedor', 'Tecnico', 'Soporte', 'Administrador'].map((role) => (
+                {['Todos', 'Ventas', 'Tecnico', 'Soporte', 'Administrador'].map((role) => (
                   <button
                     key={role}
                     type="button"
@@ -415,7 +415,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
                     onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})}
                     className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   >
-                    <option value="Vendedor">Vendedor</option>
+                    <option value="Ventas">Ventas</option>
                     <option value="Tecnico">Técnico</option>
                     <option value="Soporte">Soporte</option>
                     <option value="Administrador">Administrador</option>
@@ -505,7 +505,7 @@ export default function UsersPanel({ currentUser }: UsersPanelProps) {
                     onChange={(e) => setEditForm({...editForm, role: e.target.value})}
                     className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   >
-                    <option value="Vendedor">Vendedor</option>
+                    <option value="Ventas">Ventas</option>
                     <option value="Tecnico">Técnico</option>
                     <option value="Soporte">Soporte</option>
                     <option value="Administrador">Administrador</option>

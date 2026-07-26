@@ -33,7 +33,7 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
   const handleProcessQuote = async (id: string, status: 'Aprobada' | 'Rechazada') => {
     setActioningId(id);
     try {
-      const reviewerEmail = currentUser?.email || 'vendedor@sitesolutions.com';
+      const reviewerEmail = currentUser?.email || 'ventas@sitesolutions.com';
       const success = await updateApprovalStatus(id, status, reviewerEmail);
       if (success) {
         // Remove from local list of pending approvals
