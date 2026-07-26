@@ -1131,7 +1131,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
               )}
               
               {/* Product metadata card if assistant reply has info */}
-              {msg.sender === 'assistant' && msg.metadata && (
+              {msg.sender === 'assistant' && msg.metadata && !msg.metadata.isMultiProductQuote && (
                 <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
