@@ -687,7 +687,7 @@ export default function Home() {
         {/* Tab content renderer */}
         <div className="mt-6">
           {activeTab === 'consulta' && (
-            <ChatInterface currentRole={currentRole} />
+            <ChatInterface currentRole={currentRole} currentUser={user} />
           )}
 
           {activeTab === 'productos' && (

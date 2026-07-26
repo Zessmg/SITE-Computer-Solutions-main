@@ -9,6 +9,9 @@ interface HistoryPanelProps {
 }
 
 export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
+  const userEmail = currentUser?.email?.toLowerCase() || '';
+  const isAdmin = userEmail === 'admin@sitesolutions.com' || userEmail === 'geeraa123@gmail.com' || userEmail.startsWith('admin');
+
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('Todos');
@@ -157,6 +160,26 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
 
   // Local filtering logic based on selected filterType
   const filteredHistory = history.filter(item => {
+    // Owner filter check (Ventas / Soporte / Técnico only see their own)
+    if (!isAdmin) {
+      // Check explicit metadata user email
+      if (item.metadata?.user_email) {
+        if (item.metadata.user_email.toLowerCase() !== userEmail) return false;
+      } else {
+        // Check seed fallback based on client/role strings
+        const client = item.client.toLowerCase();
+        if (userEmail === 'm.garcia@site.com' || userEmail.startsWith('vendedor') || userEmail.includes('garcia')) {
+          if (!client.includes('ventas')) return false;
+        } else if (userEmail === 'l.reyes@site.com' || userEmail.startsWith('tecnico') || userEmail.includes('reyes')) {
+          if (!client.includes('técnico') && !client.includes('tecnico') && !client.includes('soporte')) return false;
+        } else if (userEmail.startsWith('soporte')) {
+          if (!client.includes('soporte')) return false;
+        } else {
+          return false;
+        }
+      }
+    }
+
     // 0. Filter by calendar date if selected (aligned with local timezone)
     if (dateFilter) {
       const recordLocalDate = getRecordLocalDate(item);
@@ -398,14 +421,16 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
           </div>
 
           {/* Export CSV Button */}
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-955 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl text-xs font-bold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98]"
-          >
-            <Download className="w-3.5 h-3.5 text-cyan-500" />
-            <span>Exportar</span>
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-955 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl text-xs font-bold text-slate-300 hover:text-slate-100 transition-all active:scale-[0.98]"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-500" />
+              <span>Exportar</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -415,14 +440,16 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-950/50 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <th className="px-4 py-4 w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllCurrentPageSelected}
-                    onChange={handleToggleSelectAll}
-                    className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
-                  />
-                </th>
+                {isAdmin && (
+                  <th className="px-4 py-4 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllCurrentPageSelected}
+                      onChange={handleToggleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-4 select-none">
                   <div className="flex items-center gap-2 justify-start">
                     {/* FECHA label toggles sort order */}
@@ -528,14 +555,16 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                         selectedIds.includes(record.id) ? 'bg-cyan-950/10' : ''
                       }`}
                     >
-                      <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(record.id)}
-                          onChange={(e) => handleToggleSelect(record.id, e as any)}
-                          className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
-                        />
-                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(record.id)}
+                            onChange={(e) => handleToggleSelect(record.id, e as any)}
+                            className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/50 focus:ring-offset-slate-900 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap text-[10px] text-slate-450 font-mono font-medium">
                         <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-slate-500" />

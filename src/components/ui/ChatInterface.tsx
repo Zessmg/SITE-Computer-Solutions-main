@@ -6,9 +6,10 @@ import { ChatMessage, insertHistoryRecord, fetchProducts } from '@/lib/supabase/
 
 interface ChatInterfaceProps {
   currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
+  currentUser?: any;
 }
 
-export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
+export default function ChatInterface({ currentRole, currentUser }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'm-init',
@@ -536,7 +537,10 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
             client: clientName,
             query: userMessage.text,
             response: responseText,
-            status: 'Aprobada'
+            status: 'Aprobada',
+            metadata: {
+              user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+            }
           });
         } catch (e) {
           console.error("Error inserting auto history:", e);
@@ -659,7 +663,8 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
           solution: solutionText,
           manual_url: manualUrl,
           manual_name: manualName,
-          hideQuoteButton: !isQuoteRequest
+          hideQuoteButton: !isQuoteRequest,
+          user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
         };
 
         // Guardar automáticamente en el historial de consultas generales
@@ -755,7 +760,10 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
         query: `Cotización de SKU: ${msg.metadata.sku} (${msg.metadata.name})`,
         response: msg.text,
         status: 'Pendiente',
-        metadata: msg.metadata
+        metadata: {
+          ...msg.metadata,
+          user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+        }
       });
 
       setQuotedSkus(prev => [...prev, sku]);
@@ -798,7 +806,8 @@ export default function ChatInterface({ currentRole }: ChatInterfaceProps) {
             stock: 0,
             warehouse: 'Varios Almacenes',
             isMultiProduct: true,
-            products: msg.metadata.products
+            products: msg.metadata.products,
+            user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
           }
         });
         
