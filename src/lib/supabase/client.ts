@@ -688,9 +688,17 @@ export async function signInWithEmailPassword(email: string, password: string): 
   // Consultar directorio dinámico
   const allUsers = await fetchUsersList();
   const registeredUser = allUsers.find(u => u.email.toLowerCase().trim() === lowerEmail);
-  const isBootstrapAdmin = lowerEmail === 'admin@sitesolutions.com';
 
-  if (!registeredUser && !isBootstrapAdmin) {
+  const defaultDemoEmails = [
+    'admin@sitesolutions.com',
+    'vendedor@sitesolutions.com',
+    'soporte@sitesolutions.com',
+    'tecnico@sitesolutions.com',
+    'geeraa123@gmail.com'
+  ];
+  const isDefaultDemo = defaultDemoEmails.includes(lowerEmail);
+
+  if (!registeredUser && !isDefaultDemo) {
     return { user: null, error: 'Usuario no registrado en el sistema.' };
   }
 
@@ -700,6 +708,17 @@ export async function signInWithEmailPassword(email: string, password: string): 
 
   if (password.length < 4) {
     return { user: null, error: 'La contraseña debe tener al menos 4 caracteres.' };
+  }
+
+  let name = 'Administrador';
+  let id = 'u-admin';
+  if (registeredUser) {
+    name = registeredUser.name;
+    id = registeredUser.id;
+  } else {
+    const prefix = lowerEmail.split('@')[0];
+    name = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    id = 'u-' + prefix;
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -713,9 +732,8 @@ export async function signInWithEmailPassword(email: string, password: string): 
       }
       
       // Fallback a simulación local si el correo existe y la contraseña tiene >= 4
-      const name = registeredUser ? registeredUser.name : 'Administrador';
       const fallbackUser = {
-        id: registeredUser ? registeredUser.id : 'u-admin',
+        id,
         email: lowerEmail,
         user_metadata: {
           full_name: name + ' (Demo)',
@@ -733,9 +751,8 @@ export async function signInWithEmailPassword(email: string, password: string): 
   }
 
   // Fallback local storage login simulation
-  const name = registeredUser ? registeredUser.name : 'Administrador';
   const fallbackUser = {
-    id: registeredUser ? registeredUser.id : 'u-admin',
+    id,
     email: lowerEmail,
     user_metadata: {
       full_name: name + ' (Demo)',
