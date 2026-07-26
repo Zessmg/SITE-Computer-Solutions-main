@@ -338,18 +338,29 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           return;
         }
 
-        // Función auxiliar para parsear múltiples ítems (ej: "7 NB-A14X y 3 VX-Pro15")
+        // Función auxiliar para parsear múltiples ítems (ej: "7 NB-A14X" o "VX-Pro15 15")
         const parseMultipleItems = (text: string, normalizeFn: (s: string) => string) => {
           const parts = text.split(/\s+y\s+|\s+and\s+|\s*,\s*|\s*\+\s*/i);
           const results = [];
           for (const part of parts) {
             const trimmed = part.trim();
             if (!trimmed) continue;
-            const match = trimmed.match(/^(\d+)\s*(?:unidades?|u|un|pz|piezas?\s+(?:de\s+)?)?x?\s*(.+)$/i);
-            if (match) {
+            
+            // Patrón 1: Cantidad al inicio (ej. "15 VX-Pro15" o "15x VX-Pro15")
+            const matchStart = trimmed.match(/^(\d+)\s*(?:unidades?|u|un|pz|piezas?\s+(?:de\s+)?)?x?\s*(.+)$/i);
+            // Patrón 2: Cantidad al final (ej. "VX-Pro15 15" o "VX-Pro15 15 pz")
+            const matchEnd = trimmed.match(/^(.+?)\s+(\d+)\s*(?:unidades?|u|un|pz|piezas?)?$/i);
+
+            if (matchStart) {
               results.push({
-                quantity: parseInt(match[1], 10),
-                productSearchText: normalizeFn(match[2]),
+                quantity: parseInt(matchStart[1], 10),
+                productSearchText: normalizeFn(matchStart[2]),
+                originalText: trimmed
+              });
+            } else if (matchEnd) {
+              results.push({
+                quantity: parseInt(matchEnd[2], 10),
+                productSearchText: normalizeFn(matchEnd[1]),
                 originalText: trimmed
               });
             } else {
@@ -806,7 +817,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           ...m,
           metadata: {
             ...m.metadata,
-            status: action === 'approve' ? 'Aprobada' : action === 'reject' ? 'Rechazada' : 'Editando'
+            status: action === 'approve' ? 'Enviada' : action === 'reject' ? 'Cancelada' : 'Editando'
           }
         };
       }
@@ -837,7 +848,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         const confirmMsg: ChatMessage = {
           id: 'm-' + Math.random().toString(36).substr(2, 9),
           sender: 'assistant',
-          text: `¡Cotización para **${clientName}** aprobada y enviada al supervisor! Se ha registrado el folio en la pestaña de **Autorización de Cotizaciones** bajo el estado **'Pendiente'** para la firma final.`,
+          text: `¡Cotización para **${clientName}** enviada al supervisor! Se ha registrado el folio en la pestaña de **Autorización de Cotizaciones** bajo el estado **'Pendiente'** para la autorización final.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, confirmMsg]);
@@ -848,7 +859,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       const cancelMsg: ChatMessage = {
         id: 'm-' + Math.random().toString(36).substr(2, 9),
         sender: 'assistant',
-        text: `Cotización para **${msg.metadata.clientName}** rechazada y descartada.`,
+        text: `Cotización para **${msg.metadata.clientName}** cancelada y descartada.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, cancelMsg]);
@@ -1075,7 +1086,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                         onClick={() => handleMultiQuoteAction(msg, 'approve')}
                         className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-md transition-all active:scale-[0.98]"
                       >
-                        Aprobar y enviar
+                        Enviar para autorización
                       </button>
                       <button
                         onClick={() => handleMultiQuoteAction(msg, 'edit')}
@@ -1087,7 +1098,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                         onClick={() => handleMultiQuoteAction(msg, 'reject')}
                         className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-xs font-semibold text-white shadow-md transition-all active:scale-[0.98]"
                       >
-                        Rechazar
+                        Cancelar
                       </button>
                     </div>
                   ) : (
@@ -1145,29 +1156,6 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                       <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />
                       Ficha verificada
                     </div>
-                    {!msg.metadata.hideQuoteButton && (
-                      <button
-                        onClick={() => handleApprove(msg)}
-                        disabled={quotedSkus.includes(msg.metadata.sku)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          quotedSkus.includes(msg.metadata.sku)
-                            ? 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
-                            : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-950/20 active:scale-95'
-                        }`}
-                      >
-                        {quotedSkus.includes(msg.metadata.sku) ? (
-                          <>
-                            <Clock className="w-3.5 h-3.5 text-amber-500/80" />
-                            <span>Enviada para Autorización</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-3.5 h-3.5 text-cyan-200" />
-                            <span>Crear Cotización (Por Autorizar)</span>
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
