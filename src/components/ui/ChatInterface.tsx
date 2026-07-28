@@ -101,6 +101,77 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
 
       // Interceptar consultas compuestas de múltiples materiales o contextuales
       if (activeStep === 'idle') {
+        // C. Detectar preguntas fuera del alcance (Out of Scope)
+        const offTopicKeywords = [
+          'capital de', 'presidente de', 'clima', 'futbol', 'futbol', 'receta',
+          'chiste', 'poema', 'pelicula', 'musica', 'cancion', 'quien es el dueño',
+          'telefono personal', 'teléfono personal', 'numero personal', 'número personal',
+          'celular del', 'gerente', 'director', 'jefe', 'sueldo', 'salario', 'vida de',
+          'quien escribio', 'traduce', 'clima en', 'noticias'
+        ];
+        
+        const hasOffTopicKeyword = offTopicKeywords.some(kw => cleanQuery.includes(kw));
+
+        // Verificar si la consulta tiene algún término relacionado con TI o el catálogo, o si menciona alguna marca/SKU
+        const onTopicKeywords = [
+          'laptop', 'portatil', 'computadora', 'compu', 'pc', 'servidor', 'switch', 'nas', 
+          'red', 'router', 'ram', 'memoria', 'disco', 'ssd', 'hdd', 'almacenamiento', 
+          'gpu', 'video', 'grafica', 'procesador', 'cpu', 'motherboard', 'placa', 
+          'fuente', 'psu', 'power', 'precio', 'costo', 'cotiza', 'cotizacion', 'stock', 
+          'inventario', 'almacen', 'garantia', 'cobertura', 'manual', 'guia', 'ficha', 
+          'pdf', 'compatib', 'soporte', 'firmware', 'falla', 'error', 'ayuda', 'hola', 
+          'buenos dias', 'buen dia', 'buenas tardes', 'buenas noches', 'saludos', 'hello', 'hi'
+        ];
+        
+        const mentionsBrandOrSku = productsList.some(p => {
+          const skuNorm = normalizeText(p.sku);
+          const nameNorm = normalizeText(p.name);
+          const brandNorm = p.brand ? normalizeText(p.brand) : '';
+          return cleanQuery.includes(skuNorm) || cleanQuery.includes(nameNorm) || (brandNorm && cleanQuery.includes(brandNorm));
+        });
+
+        const hasOnTopicKeyword = onTopicKeywords.some(kw => cleanQuery.includes(kw));
+        
+        const isOutOfScope = hasOffTopicKeyword || (!hasOnTopicKeyword && !mentionsBrandOrSku);
+
+        if (isOutOfScope) {
+          const responseText = `⚠️ **Consulta Fuera de Alcance**\n\n` +
+                               `Lo siento, como Asistente de IA de Site Solutions no puedo ayudarte con consultas generales, información personal de empleados o temas fuera de nuestro alcance corporativo.\n\n` +
+                               `**¿En qué sí te puedo ayudar?**\n` +
+                               `*   Consultar especificaciones técnicas y compatibilidades de hardware (laptops, servidores, RAM, tarjetas de video, placas madre, fuentes de poder, switches, NAS).\n` +
+                               `*   Consultar disponibilidad de stock, precios de lista y ubicaciones de almacén.\n` +
+                               `*   Generar, actualizar o autorizar cotizaciones comerciales.\n` +
+                               `*   Localizar manuales de usuario y guías de fábrica de los equipos de nuestro catálogo.`;
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: responseText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+          try {
+            insertHistoryRecord({
+              date: new Date().toISOString().split('T')[0],
+              client: clientName,
+              query: userMessage.text,
+              response: responseText,
+              status: 'Rechazada',
+              metadata: {
+                user_email: currentUser?.email || `${currentRole}@sitesolutions.com`,
+                out_of_scope: true
+              }
+            });
+          } catch (e) {
+            console.error("Error inserting auto history:", e);
+          }
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
         // A. Verificar si es una consulta de color referente al producto anterior (Memoria Contextual)
         const isContextColorQuery = (cleanQuery.includes('color') || cleanQuery.includes('negro') || cleanQuery.includes('blanco') || cleanQuery.includes('negra') || cleanQuery.includes('blanca')) && 
                                     (cleanQuery.includes('esa misma') || cleanQuery.includes('ese mismo') || cleanQuery.includes('esta misma') || cleanQuery.includes('este mismo') || cleanQuery.includes('la misma') || cleanQuery.includes('el mismo') || cleanQuery.includes('la tienen') || cleanQuery.includes('lo tienen'));
