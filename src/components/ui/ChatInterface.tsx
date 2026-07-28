@@ -659,7 +659,32 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         } else if (isStockQuery) {
           responseText = `Actualmente contamos con un stock de **${matchedProduct.stock} unidades** para **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) ubicadas en el **${warehouseText}**.`;
         } else if (cleanQuery.includes('compatib') || cleanQuery.includes('compatible')) {
-          responseText = `**Compatibilidad Verificada**: El componente **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es compatible. Si estás validando la memoria RAM Vertex/Quantum DDR5 con el socket LGA1700 de la tarjeta madre Z790, ten en cuenta que requiere versión de BIOS >= v2.3 para un arranque y frecuencias de memoria estables.`;
+          let optionsText = '';
+          const cat = matchedProduct.category.toLowerCase();
+          const name = matchedProduct.name.toLowerCase();
+          
+          if (cat.includes('madre') || cat.includes('motherboard') || name.includes('z690') || name.includes('z790')) {
+            const isD5 = matchedProduct.description.toLowerCase().includes('ddr5') || name.includes('z790');
+            optionsText = `\n\n**Opciones de Compatibilidad Recomendadas:**\n` +
+                          `*   **Procesadores:** Compatible con socket Intel LGA1700 (ej: Ferrotech FT-i9X-12C).\n` +
+                          `*   **Memoria RAM:** Requiere módulos **${isD5 ? 'DDR5' : 'DDR4'}** (ej: ${isD5 ? 'Quantum Line QL-DDR5-32' : 'módulos DDR4 estándar'}).\n` +
+                          `*   **Almacenamiento:** Soporta SSD M.2 PCIe Gen 4x4 y puertos SATA III.`;
+          } else if (cat.includes('ram') || cat.includes('memoria')) {
+            const isD5 = matchedProduct.description.toLowerCase().includes('ddr5') || name.includes('ddr5');
+            optionsText = `\n\n**Opciones de Compatibilidad Recomendadas:**\n` +
+                          `*   **Tarjetas Madre:** Compatible con placas base que soporten ranuras **${isD5 ? 'DDR5' : 'DDR4'}** (ej: ${isD5 ? 'TechCore TC-Z690 o superior con soporte DDR5' : 'TechCore TC-Z690 DDR4'}).\n` +
+                          `*   **Procesadores:** Compatible con controladores de memoria integrados en procesadores Intel Core de 12a Gen o superior y AMD Ryzen serie 7000.`;
+          } else if (cat.includes('procesador') || cat.includes('cpu')) {
+            optionsText = `\n\n**Opciones de Compatibilidad Recomendadas:**\n` +
+                          `*   **Tarjetas Madre:** Requiere socket Intel LGA1700 con chipset Z690/Z790 (ej: TechCore TC-Z690).\n` +
+                          `*   **Enfriamiento:** Compatible con disipadores y refrigeración líquida con bracket LGA1700 (ej: bracket universal de 120mm/240mm).`;
+          } else {
+            optionsText = `\n\n**Opciones de Compatibilidad Recomendadas:**\n` +
+                          `*   **Conectividad:** Compatible con interfaces estándar de la industria (PCIe Gen 4.0, puertos USB-C/A, o conectores de alimentación ATX estándar de 24 pines).\n` +
+                          `*   **Alimentación:** Asegúrate de contar con una fuente de poder certificada de al menos 650W para un rendimiento óptimo.`;
+          }
+
+          responseText = `**Compatibilidad Verificada**: El componente **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es compatible. Si estás validando la memoria RAM Vertex/Quantum DDR5 con el socket LGA1700 de la tarjeta madre Z790, ten en cuenta que requiere versión de BIOS >= v2.3 para un arranque y frecuencias de memoria estables.${optionsText}`;
         } else if (cleanQuery.includes('garant')) {
           responseText = `El equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) cuenta con una póliza de garantía oficial del fabricante por un plazo de **${matchedProduct.specs?.warranty_months || 12} meses**. La póliza cubre reemplazo directo y diagnóstico con Site Solutions.`;
         } else if (cleanQuery.includes('manual')) {
