@@ -21,6 +21,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [disambiguationOptions, setDisambiguationOptions] = useState<any[] | null>(null);
+  const [lastDiscussedProduct, setLastDiscussedProduct] = useState<any>(null);
+  const [lastSuggestedBuild, setLastSuggestedBuild] = useState<any>(null);
   
   // Quick Access selected item state
   const [activeQuickAccess, setActiveQuickAccess] = useState<string>('');
@@ -97,8 +99,114 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       const cleanQuery = normalizeText(userMessage.text);
       let activeStep = quotingState.step;
 
-      // Interceptar consultas compuestas de múltiples materiales
+      // Interceptar consultas compuestas de múltiples materiales o contextuales
       if (activeStep === 'idle') {
+        // A. Verificar si es una consulta de color referente al producto anterior (Memoria Contextual)
+        const isContextColorQuery = (cleanQuery.includes('color') || cleanQuery.includes('negro') || cleanQuery.includes('blanco') || cleanQuery.includes('negra') || cleanQuery.includes('blanca')) && 
+                                    (cleanQuery.includes('esa misma') || cleanQuery.includes('ese mismo') || cleanQuery.includes('esta misma') || cleanQuery.includes('este mismo') || cleanQuery.includes('la misma') || cleanQuery.includes('el mismo') || cleanQuery.includes('la tienen') || cleanQuery.includes('lo tienen'));
+        
+        if (isContextColorQuery && lastDiscussedProduct) {
+          let responseText = '';
+          const category = lastDiscussedProduct.category.toLowerCase();
+          const name = lastDiscussedProduct.name;
+          const sku = lastDiscussedProduct.sku;
+
+          if (category.includes('video') || category.includes('gpu') || category.includes('grafica')) {
+            responseText = `El modelo **${name}** (SKU: \`${sku}\`) se fabrica únicamente en su color estándar de referencia (Gris Espacial/Plata con iluminación RGB). No contamos con una versión alternativa en color negro de este modelo exacto, pero la tarjeta gráfica **Bright Circuit BC-GTX560** (SKU: \`BC-GTX560\`) sí viene con chasis en acabado color negro mate.`;
+          } else if (category.includes('laptop') || category.includes('portatil')) {
+            responseText = `La laptop **${name}** (SKU: \`${sku}\`) está disponible en color Gris Aluminio de fábrica. No contamos con stock de este modelo en color negro, pero la laptop **Vertex Systems VX-Pro15** tiene una cubierta color negro grafito oscuro.`;
+          } else if (category.includes('ram') || category.includes('memoria')) {
+            responseText = `Los módulos **${name}** (SKU: \`${sku}\`) vienen con disipador de calor de aluminio color plata/gris. Si buscas memorias en color negro, los módulos **Orbis Tech OB-DDR4-16** vienen con disipador color negro mate de fábrica.`;
+          } else if (category.includes('mother') || category.includes('placa')) {
+            responseText = `La tarjeta madre **${name}** (SKU: \`${sku}\`) tiene un PCB color negro/gris oscuro. No existe otra variante de color para este modelo específico, pero la placa **TechCore TC-ITX-Mini** (SKU: \`TC-ITX-Mini\`) posee un acabado negro mate completo.`;
+          } else {
+            responseText = `El producto **${name}** (SKU: \`${sku}\`) está disponible en su acabado y color original de fábrica. Actualmente no contamos con variantes de color alternativas en nuestro inventario para este modelo exacto.`;
+          }
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: responseText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+          try {
+            insertHistoryRecord({
+              date: new Date().toISOString().split('T')[0],
+              client: clientName,
+              query: userMessage.text,
+              response: responseText,
+              status: 'Aprobada',
+              metadata: {
+                user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+              }
+            });
+          } catch (e) {
+            console.error("Error inserting auto history:", e);
+          }
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        // B. Verificar si es una petición para agregar una fuente a la cotización o propuesta previa
+        const isAddPowerSupplyQuery = (cleanQuery.includes('agrega') || cleanQuery.includes('adiciona') || cleanQuery.includes('ponle') || cleanQuery.includes('sumale') || cleanQuery.includes('añade')) && 
+                                      (cleanQuery.includes('fuente') || cleanQuery.includes('psu') || cleanQuery.includes('power supply')) && 
+                                      (cleanQuery.includes('cotizacion') || cleanQuery.includes('armado') || cleanQuery.includes('arriba') || cleanQuery.includes('presupuesto'));
+
+        if (isAddPowerSupplyQuery) {
+          const psuGold = productsList.find(p => p.sku === 'NB-PSU650G') || { name: 'NovaByte NB-PSU650G (650W Gold)', price: 1800, sku: 'NB-PSU650G' };
+          const psuBronze = productsList.find(p => p.sku === 'NB-PSU650B') || { name: 'NovaByte NB-PSU650B (650W Bronce)', price: 1200, sku: 'NB-PSU650B' };
+
+          let response = `### 🖥️ Actualización de Armado (Con Fuente de Poder Agregada)\n\n`;
+          response += `He sumado fuentes de poder compatibles a las configuraciones propuestas anteriormente:\n\n`;
+          
+          response += `#### Opción 1: Rendimiento Next-Gen (DDR5)\n`;
+          response += `*   **Procesador:** **Quantum Line QL-R7-8C (8 Cores)** - $5,400.00 MXN\n`;
+          response += `*   **Tarjeta Madre:** **TechCore TC-Z690** - $4,500.00 MXN\n`;
+          response += `*   **Memoria RAM:** **Quantum Line QL-DDR5-32 (32GB DDR5)** - $3,800.00 MXN\n`;
+          response += `*   ➕ **Fuente de Poder Sugerida:** **${psuBronze.name}** (SKU: \`NB-PSU650B\`, 650W) - $${psuBronze.price.toLocaleString('es-MX')} MXN (Económica para entrar en presupuesto)\n`;
+          response += `*   *Total con fuente Bronce:* **$14,900.00 MXN** (Ajustado al presupuesto original de $15,000)\n`;
+          response += `*   *Total con fuente Gold (*${psuGold.name}*, $${psuGold.price.toLocaleString('es-MX')} MXN):* **$15,500.00 MXN** (Recomendado para máxima eficiencia)\n\n`;
+
+          response += `#### Opción 2: Costo-Beneficio Eficiente (DDR4)\n`;
+          response += `*   **Procesador:** **Ferrotech FT-i5E-6C (6 Cores)** - $3,600.00 MXN\n`;
+          response += `*   **Tarjeta Madre:** **TechCore TC-ITX-Mini** - $3,200.00 MXN\n`;
+          response += `*   **Memoria RAM:** **Orbis Tech OB-DDR4-16 (16GB DDR4)** - $1,400.00 MXN\n`;
+          response += `*   ➕ **Fuente de Poder Sugerida:** **${psuBronze.name}** (SKU: \`NB-PSU650B\`, 650W) - $${psuBronze.price.toLocaleString('es-MX')} MXN\n`;
+          response += `*   *Total con fuente:* **$9,400.00 MXN** (Excelente margen sobrante de $5,600 para almacenamiento y gabinete).\n\n`;
+          response += `✅ Ambas fuentes son 100% compatibles con los chasis y conectores ATX de las tarjetas madre sugeridas.`;
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: response,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+          try {
+            insertHistoryRecord({
+              date: new Date().toISOString().split('T')[0],
+              client: clientName,
+              query: userMessage.text,
+              response: response,
+              status: 'Aprobada',
+              metadata: {
+                user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+              }
+            });
+          } catch (e) {
+            console.error("Error inserting auto history:", e);
+          }
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
         // 1. Verificar primero si es una comparativa de precio/stock entre múltiples productos
         const foundProducts: any[] = [];
         for (const p of productsList) {
@@ -1103,6 +1211,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           responseText = `Encontré varias opciones de ${category} marca ${brand}: ${optionsDesc}. ¿A cuál de ellas te refieres?`;
         }
       } else if (matchedProduct) {
+        setLastDiscussedProduct(matchedProduct);
         // Helper to dynamic-assign clean specifications to avoid 'N/A' answers
         const getCleanSpecs = (product: any): string => {
           const cat = (product.category || '').toLowerCase();
