@@ -599,23 +599,57 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         return;
       }
 
-      let matchedProduct = productsList.find(p => {
+      let bestMatch = { product: null as any, score: 0 };
+      
+      for (const p of productsList) {
         const skuNorm = normalizeText(p.sku);
         const nameNorm = normalizeText(p.name);
         const categoryNorm = normalizeText(p.category);
         const descriptionNorm = normalizeText(p.description || '');
         
-        // Si la consulta contiene el SKU exacto normalizado
-        if (cleanQuery.includes(skuNorm)) return true;
+        let score = 0;
         
-        // Verificar si alguna palabra clave coincide con nombre, SKU, categoría o descripción
-        return words.some(word => 
-          nameNorm.includes(word) || 
-          skuNorm.includes(word) ||
-          categoryNorm.includes(word) ||
-          descriptionNorm.includes(word)
-        );
-      });
+        // Prioridad absoluta si la consulta contiene el SKU exacto
+        if (cleanQuery.includes(skuNorm)) {
+          score += 100;
+        }
+        
+        let matchedWordsCount = 0;
+        words.forEach(word => {
+          if (nameNorm.includes(word) || skuNorm.includes(word) || categoryNorm.includes(word) || descriptionNorm.includes(word)) {
+            matchedWordsCount++;
+          }
+        });
+        
+        if (matchedWordsCount > 0) {
+          score += (matchedWordsCount / words.length) * 50;
+          
+          // Extraer números de 2 o más dígitos (ej. 90, 95, 9090, 4080)
+          const queryNumbers = cleanQuery.match(/\b\d{2,}\b/g) || [];
+          if (queryNumbers.length > 0) {
+            const productNumbersText = `${skuNorm} ${nameNorm} ${descriptionNorm}`;
+            const matchesNumbers = queryNumbers.every(num => productNumbersText.includes(num));
+            if (matchesNumbers) {
+              score += 30;
+            } else {
+              score -= 40; // Penalizar si el número consultado no existe en este producto
+            }
+          }
+          
+          // Peso extra por coincidencias directas en nombre o SKU
+          words.forEach(word => {
+            if (nameNorm.includes(word) || skuNorm.includes(word)) {
+              score += 5;
+            }
+          });
+        }
+        
+        if (score > bestMatch.score) {
+          bestMatch = { product: p, score: score };
+        }
+      }
+      
+      let matchedProduct = bestMatch.score >= 15 ? bestMatch.product : null;
 
       let responseText = '';
       let metadata: ChatMessage['metadata'] = undefined;
@@ -766,30 +800,14 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         if (queryCleaned.includes('z790') || queryCleaned.includes('tcz790')) {
           responseText = `El producto **TC-Z790** fue reemplazado por **TC-Z690**.`;
         } else {
-          const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen'];
-          
-          // Verificar consultas sin producto especificado
-          const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
-          const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
-          const isWarrantyQuery = cleanQuery.includes('garant');
-          const isManualQuery = cleanQuery.includes('manual');
-          
+          const listKeywords = ['lista', 'catalogo', 'inventario', 'equipos', 'modelos', 'disponibles', 'que venden', 'que tienen', 'ejemplo', 'ejemplos'];
           const isListRequest = listKeywords.some(keyword => cleanQuery.includes(keyword));
 
-          if (isPriceQuery) {
-            responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
-          } else if (isCompatQuery) {
-            responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
-          } else if (isWarrantyQuery) {
-            responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
-          } else if (isManualQuery) {
-            responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
-          } else if (isListRequest && productsList.length > 0) {
+          if (isListRequest && productsList.length > 0) {
             responseText = `Actualmente contamos con los siguientes equipos en nuestro catálogo maestro de Site Solutions:\n\n`;
             responseText += `| SKU | Producto | Precio Lista (MXN) | Stock |\n`;
             responseText += `| :--- | :--- | :--- | :--- |\n`;
             
-            // Mostrar los primeros 10 productos para no saturar la pantalla
             const displayProducts = productsList.slice(0, 10);
             displayProducts.forEach(p => {
               const priceVal = p.price || 0;
@@ -797,18 +815,59 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
             });
 
             if (productsList.length > 10) {
-              responseText += `\n*Mostrando 10 de ${productsList.length} productos disponibles. Puedes consultar cualquier SKU específico en el chat para iniciar una cotización.*`;
+              responseText += `\n*Mostrando 10 de ${productsList.length} productos disponibles. Puedes consultar cualquier SKU específico en el chat.*`;
             } else {
-              responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles, existencias en almacenes o generar una cotización.*`;
+              responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles o iniciar una cotización.*`;
             }
           } else {
-            const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
-            const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+            // Buscar sugerencias alternativas que coincidan parcialmente con las palabras de búsqueda
+            const suggestions = productsList
+              .map(p => {
+                const skuNorm = normalizeText(p.sku);
+                const nameNorm = normalizeText(p.name);
+                const categoryNorm = normalizeText(p.category);
+                const descriptionNorm = normalizeText(p.description || '');
+                
+                let matchCount = 0;
+                words.forEach(word => {
+                  if (nameNorm.includes(word) || skuNorm.includes(word) || categoryNorm.includes(word) || descriptionNorm.includes(word)) {
+                    matchCount++;
+                  }
+                });
+                return { product: p, matchCount };
+              })
+              .filter(item => item.matchCount > 0)
+              .sort((a, b) => b.matchCount - a.matchCount)
+              .slice(0, 3)
+              .map(item => item.product);
 
-            if (isGreeting) {
-              responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+            if (suggestions.length > 0) {
+              responseText = `El material solicitado no existe en nuestro catálogo. Te sugiero estas opciones válidas similares:\n\n` +
+                suggestions.map(p => `*   **${p.name}** (SKU: \`${p.sku}\`) - $${p.price.toLocaleString('es-MX')} MXN | Almacén: ${p.warehouse_location || p.warehouse || 'Almacén Central'} (Stock: ${p.stock} u.)`).join('\n');
             } else {
-              responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+              const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
+              const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
+              const isWarrantyQuery = cleanQuery.includes('garant');
+              const isManualQuery = cleanQuery.includes('manual');
+              
+              if (isPriceQuery) {
+                responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
+              } else if (isCompatQuery) {
+                responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
+              } else if (isWarrantyQuery) {
+                responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
+              } else if (isManualQuery) {
+                responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
+              } else {
+                const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
+                const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
+
+                if (isGreeting) {
+                  responseText = `¡Hola! ¿Cómo puedo ayudarte hoy? Puedo asistirte con especificaciones técnicas, niveles de stock, precios de equipos o la autorización de cotizaciones.`;
+                } else {
+                  responseText = `He revisado el catálogo para "${userMessage.text}", pero no coincide con ningún SKU exacto o categoría principal. Te recomiendo buscar por 'Servidor', 'Laptop', 'Switch' o 'NAS'.`;
+                }
+              }
             }
           }
         }
