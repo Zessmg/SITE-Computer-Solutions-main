@@ -599,7 +599,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         return;
       }
 
-      let bestMatch = { product: null as any, score: 0 };
+      const candidates: { product: any; score: number }[] = [];
       
       for (const p of productsList) {
         const skuNorm = normalizeText(p.sku);
@@ -644,7 +644,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
             motherboard: ['madre', 'motherboard', 'placa', 'placa base'],
             processor: ['procesador', 'cpu', 'procesadores'],
             switch: ['switch', 'switches', 'red'],
-            nas: ['nas', 'servidor nas']
+            nas: ['nas', 'servidor nas'],
+            power_supply: ['fuente', 'fuentes', 'power supply', 'psu']
           };
 
           let categoryMismatch = false;
@@ -656,7 +657,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
               const productMatchesCategory = productCategory.includes(key) || 
                 (key === 'gpu' && (productCategory.includes('gpu') || productCategory.includes('video') || productCategory.includes('grafica'))) ||
                 (key === 'motherboard' && (productCategory.includes('mother') || productCategory.includes('placa') || productCategory.includes('madre'))) ||
-                (key === 'ram' && (productCategory.includes('ram') || productCategory.includes('memoria')));
+                (key === 'ram' && (productCategory.includes('ram') || productCategory.includes('memoria'))) ||
+                (key === 'power_supply' && (productCategory.includes('fuente') || productCategory.includes('psu') || productCategory.includes('alimentacion')));
               
               if (!productMatchesCategory) {
                 categoryMismatch = true;
@@ -676,17 +678,47 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           });
         }
         
-        if (score > bestMatch.score) {
-          bestMatch = { product: p, score: score };
+        if (score >= 15) {
+          candidates.push({ product: p, score: score });
         }
       }
       
-      let matchedProduct = bestMatch.score >= 15 ? bestMatch.product : null;
+      // Ordenar candidatos por puntuación descendente
+      candidates.sort((a, b) => b.score - a.score);
+      
+      let matchedProduct = null;
+      let isAmbiguous = false;
+      let ambiguousProducts: any[] = [];
+      
+      if (candidates.length > 0) {
+        const topScore = candidates[0].score;
+        // Encontrar candidatos que tengan la misma puntuación máxima o muy similar (dentro de 5 puntos)
+        const topCandidates = candidates.filter(c => topScore - c.score <= 5);
+        
+        if (topCandidates.length > 1) {
+          isAmbiguous = true;
+          ambiguousProducts = topCandidates.map(c => c.product);
+        } else {
+          matchedProduct = candidates[0].product;
+        }
+      }
 
       let responseText = '';
       let metadata: ChatMessage['metadata'] = undefined;
 
-      if (matchedProduct) {
+      if (isAmbiguous) {
+        const first = ambiguousProducts[0];
+        const brand = first.brand;
+        const category = first.category.toLowerCase();
+        
+        const optionsDesc = ambiguousProducts.map(p => {
+          const desc = p.description.toLowerCase();
+          const type = desc.includes('bronze') || desc.includes('bronce') ? 'Bronce' : desc.includes('gold') ? 'Gold' : p.name;
+          return `${type} ($${p.price.toLocaleString('es-MX')})`;
+        }).join(' y ');
+        
+        responseText = `Encontré dos fuentes ${brand} de 650W: ${optionsDesc}. ¿Cuál te interesa?`;
+      } else if (matchedProduct) {
         // Helper to dynamic-assign clean specifications to avoid 'N/A' answers
         const getCleanSpecs = (product: any): string => {
           const cat = (product.category || '').toLowerCase();
@@ -881,8 +913,14 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
               const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
               const isWarrantyQuery = cleanQuery.includes('garant');
               const isManualQuery = cleanQuery.includes('manual');
+              const isGamerQuery = cleanQuery.includes('gamer') || cleanQuery.includes('gaming') || cleanQuery.includes('juegos') || cleanQuery.includes('compu gamer') || cleanQuery.includes('computadora gamer');
               
-              if (isPriceQuery) {
+              if (isGamerQuery) {
+                responseText = `Para una computadora gamer con excelente relación calidad-precio, te recomiendo los siguientes componentes esenciales de nuestro catálogo:\n\n` +
+                  `*   **NovaByte NB-RTX90** (SKU: \`NB-RTX90\`) - Tarjeta de Video potente para gaming ($8,500.00 MXN).\n` +
+                  `*   **Quantum Line QL-DDR5-32** (SKU: \`QL-DDR5-32\`) - Memoria RAM DDR5 de alto rendimiento ($3,800.00 MXN).\n` +
+                  `*   **TechCore TC-Z690** (SKU: \`TC-Z690\`) - Tarjeta Madre con soporte DDR5 ($4,500.00 MXN).`;
+              } else if (isPriceQuery) {
                 responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
               } else if (isCompatQuery) {
                 responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;

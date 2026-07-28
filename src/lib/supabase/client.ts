@@ -1673,6 +1673,64 @@ const SEED_PRODUCTS = [
       "solution": "Contactar soporte técnico oficial de Site Solutions.",
       "firmware_ver": "v1.0.0"
     }
+  },
+  {
+    "id": "psu-04",
+    "sku": "NB-PSU650B",
+    "name": "NovaByte NB-PSU650B",
+    "category": "Fuente de poder",
+    "brand": "NovaByte",
+    "price": 1200,
+    "stock": 15,
+    "warehouse_location": "Almacén Central A-02",
+    "description": "Fuente de poder de 650W, certificación 80+ Bronze",
+    "image_url": "/assets/hero_tech_banner.png",
+    "status": "Disponible",
+    "specs": {
+      "processor": "N/A",
+      "ram": "N/A",
+      "storage": "N/A",
+      "graphics": "N/A",
+      "power_consumption_tdp": "Fuente de poder de 650W, certificación 80+ Bronze",
+      "operating_temp": "0°C - 50°C",
+      "dimensions": "N/A",
+      "weight": "N/A",
+      "warranty_months": 36
+    },
+    "support_info": {
+      "common_issue": "Sin fallas.",
+      "solution": "Contactar soporte técnico.",
+      "firmware_ver": "v1.0.0"
+    }
+  },
+  {
+    "id": "psu-05",
+    "sku": "NB-PSU650G",
+    "name": "NovaByte NB-PSU650G",
+    "category": "Fuente de poder",
+    "brand": "NovaByte",
+    "price": 1800,
+    "stock": 8,
+    "warehouse_location": "Almacén Central A-02",
+    "description": "Fuente de poder de 650W modular, 80+ Gold",
+    "image_url": "/assets/hero_tech_banner.png",
+    "status": "Disponible",
+    "specs": {
+      "processor": "N/A",
+      "ram": "N/A",
+      "storage": "N/A",
+      "graphics": "N/A",
+      "power_consumption_tdp": "Fuente de poder de 650W modular, 80+ Gold",
+      "operating_temp": "0°C - 50°C",
+      "dimensions": "N/A",
+      "weight": "N/A",
+      "warranty_months": 60
+    },
+    "support_info": {
+      "common_issue": "Sin fallas.",
+      "solution": "Contactar soporte técnico.",
+      "firmware_ver": "v1.0.0"
+    }
   }
 ];
 
