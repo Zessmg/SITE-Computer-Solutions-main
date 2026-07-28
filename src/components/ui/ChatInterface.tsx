@@ -651,7 +651,11 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         const solutionText = matchedProduct.support_info?.solution || matchedProduct.support_info?.solution_steps || 'Contactar soporte técnico';
         const warehouseText = matchedProduct.warehouse_location || matchedProduct.warehouse || 'Almacén Central';
 
-        if (cleanQuery.includes('compatib') || cleanQuery.includes('compatible')) {
+        const isPriceQuery = cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuesta') || cleanQuery.includes('cuanto vale') || cleanQuery.includes('valor') || cleanQuery.includes('precios') || cleanQuery.includes('precio de');
+
+        if (isPriceQuery) {
+          responseText = `El precio de lista corporativo para **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es **$${matchedProduct.price.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN**.`;
+        } else if (cleanQuery.includes('compatib') || cleanQuery.includes('compatible')) {
           responseText = `**Compatibilidad Verificada**: El componente **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es compatible. Si estás validando la memoria RAM Vertex/Quantum DDR5 con el socket LGA1700 de la tarjeta madre Z790, ten en cuenta que requiere versión de BIOS >= v2.3 para un arranque y frecuencias de memoria estables.`;
         } else if (cleanQuery.includes('garant')) {
           responseText = `El equipo **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) cuenta con una póliza de garantía oficial del fabricante por un plazo de **${matchedProduct.specs?.warranty_months || 12} meses**. La póliza cubre reemplazo directo y diagnóstico con Site Solutions.`;
@@ -695,8 +699,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           warehouse: warehouseText,
           specs: specsText,
           solution: solutionText,
-          manual_url: manualUrl,
-          manual_name: manualName,
+          manual_url: isPriceQuery ? null : manualUrl,
+          manual_name: isPriceQuery ? null : manualName,
           hideQuoteButton: !isQuoteRequest,
           user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
         };
