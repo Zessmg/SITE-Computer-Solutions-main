@@ -652,9 +652,12 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         const warehouseText = matchedProduct.warehouse_location || matchedProduct.warehouse || 'Almacén Central';
 
         const isPriceQuery = cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuesta') || cleanQuery.includes('cuanto vale') || cleanQuery.includes('valor') || cleanQuery.includes('precios') || cleanQuery.includes('precio de');
+        const isStockQuery = cleanQuery.includes('stock') || cleanQuery.includes('existencia') || cleanQuery.includes('existencias') || cleanQuery.includes('disponible') || cleanQuery.includes('disponibilidad') || cleanQuery.includes('tienen');
 
         if (isPriceQuery) {
           responseText = `El precio de lista corporativo para **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es **$${matchedProduct.price.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN**.`;
+        } else if (isStockQuery) {
+          responseText = `Actualmente contamos con un stock de **${matchedProduct.stock} unidades** para **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) ubicadas en el **${warehouseText}**.`;
         } else if (cleanQuery.includes('compatib') || cleanQuery.includes('compatible')) {
           responseText = `**Compatibilidad Verificada**: El componente **${matchedProduct.name}** (SKU: \`${matchedProduct.sku}\`) es compatible. Si estás validando la memoria RAM Vertex/Quantum DDR5 con el socket LGA1700 de la tarjeta madre Z790, ten en cuenta que requiere versión de BIOS >= v2.3 para un arranque y frecuencias de memoria estables.`;
         } else if (cleanQuery.includes('garant')) {
@@ -699,8 +702,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           warehouse: warehouseText,
           specs: specsText,
           solution: solutionText,
-          manual_url: isPriceQuery ? null : manualUrl,
-          manual_name: isPriceQuery ? null : manualName,
+          manual_url: (isPriceQuery || isStockQuery) ? null : manualUrl,
+          manual_name: (isPriceQuery || isStockQuery) ? null : manualName,
           hideQuoteButton: !isQuoteRequest,
           user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
         };
