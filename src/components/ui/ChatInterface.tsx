@@ -955,50 +955,103 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
               responseText += `\n*Puedes consultar cualquiera de estos SKUs en el chat para obtener detalles o iniciar una cotización.*`;
             }
           } else {
-            // Buscar sugerencias alternativas que coincidan parcialmente con las palabras de búsqueda
-            const suggestions = productsList
-              .map(p => {
-                const skuNorm = normalizeText(p.sku);
-                const nameNorm = normalizeText(p.name);
-                const categoryNorm = normalizeText(p.category);
-                const descriptionNorm = normalizeText(p.description || '');
-                
-                let matchCount = 0;
-                words.forEach(word => {
-                  if (nameNorm.includes(word) || skuNorm.includes(word) || categoryNorm.includes(word) || descriptionNorm.includes(word)) {
-                    matchCount++;
-                  }
-                });
-                return { product: p, matchCount };
-              })
-              .filter(item => item.matchCount > 0)
-              .sort((a, b) => b.matchCount - a.matchCount)
-              .slice(0, 3)
-              .map(item => item.product);
+            // 1. Primero evaluar intenciones específicas de lenguaje natural (ej: presupuesto, gamer, precio, etc.)
+            const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
+            const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
+            const isWarrantyQuery = cleanQuery.includes('garant');
+            const isManualQuery = cleanQuery.includes('manual');
+            const isGamerQuery = cleanQuery.includes('gamer') || cleanQuery.includes('gaming') || cleanQuery.includes('juegos') || cleanQuery.includes('compu gamer') || cleanQuery.includes('computadora gamer');
+            const isBudgetQuery = cleanQuery.includes('presupuesto') || cleanQuery.includes('armar pc') || cleanQuery.includes('armar una pc');
 
-            if (suggestions.length > 0) {
-              responseText = `El material solicitado no existe en nuestro catálogo. Te sugiero estas opciones válidas similares:\n\n` +
-                suggestions.map(p => `*   **${p.name}** (SKU: \`${p.sku}\`) - $${p.price.toLocaleString('es-MX')} MXN | Almacén: ${p.warehouse_location || p.warehouse || 'Almacén Central'} (Stock: ${p.stock} u.)`).join('\n');
-            } else {
-              const isPriceQuery = cleanQuery === 'precio' || cleanQuery === 'precios' || cleanQuery.includes('precio') || cleanQuery.includes('costo') || cleanQuery.includes('cuanto cuesta');
-              const isCompatQuery = cleanQuery.includes('compatible') || cleanQuery.includes('compatibilidad');
-              const isWarrantyQuery = cleanQuery.includes('garant');
-              const isManualQuery = cleanQuery.includes('manual');
-              const isGamerQuery = cleanQuery.includes('gamer') || cleanQuery.includes('gaming') || cleanQuery.includes('juegos') || cleanQuery.includes('compu gamer') || cleanQuery.includes('computadora gamer');
+            if (isBudgetQuery) {
+              let budget = 15000;
+              const budgetMatch = cleanQuery.replace(/,/g, '').match(/\b\d{4,6}\b/);
+              if (budgetMatch) {
+                budget = parseInt(budgetMatch[0], 10);
+              }
+
+              // Generar opciones compatibles según el presupuesto
+              // Opción 1: DDR5 (Alto Rendimiento)
+              const opt1Mother = { sku: 'TC-Z690', name: 'TechCore TC-Z690', price: 4500 };
+              const opt1Ram = budget >= 13000 
+                ? { sku: 'QL-DDR5-32', name: 'Quantum Line QL-DDR5-32 (32GB DDR5)', price: 3800 }
+                : { sku: 'QL-DDR5-16', name: 'Quantum Line QL-DDR5-16 (16GB DDR5)', price: 2100 };
               
-              if (isGamerQuery) {
-                responseText = `Para una computadora gamer con excelente relación calidad-precio, te recomiendo los siguientes componentes esenciales de nuestro catálogo:\n\n` +
-                  `*   **NovaByte NB-RTX90** (SKU: \`NB-RTX90\`) - Tarjeta de Video potente para gaming ($8,500.00 MXN).\n` +
-                  `*   **Quantum Line QL-DDR5-32** (SKU: \`QL-DDR5-32\`) - Memoria RAM DDR5 de alto rendimiento ($3,800.00 MXN).\n` +
-                  `*   **TechCore TC-Z690** (SKU: \`TC-Z690\`) - Tarjeta Madre con soporte DDR5 ($4,500.00 MXN).`;
-              } else if (isPriceQuery) {
-                responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
-              } else if (isCompatQuery) {
-                responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
-              } else if (isWarrantyQuery) {
-                responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
-              } else if (isManualQuery) {
-                responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
+              const opt1Cpu = (budget - opt1Mother.price - opt1Ram.price >= 5400)
+                ? { sku: 'QL-R7-8C', name: 'Quantum Line QL-R7-8C (8 Cores)', price: 5400 }
+                : (budget - opt1Mother.price - opt1Ram.price >= 3600)
+                ? { sku: 'FT-i5E-6C', name: 'Ferrotech FT-i5E-6C (6 Cores)', price: 3600 }
+                : { sku: 'QL-R5-4C', name: 'Quantum Line QL-R5-4C (4 Cores)', price: 2200 };
+
+              const opt1Total = opt1Mother.price + opt1Ram.price + opt1Cpu.price;
+              const opt1Fits = opt1Total <= budget;
+
+              // Opción 2: DDR4 (Económica)
+              const opt2Mother = { sku: 'TC-ITX-Mini', name: 'TechCore TC-ITX-Mini', price: 3200 };
+              const opt2Ram = { sku: 'OB-DDR4-16', name: 'Orbis Tech OB-DDR4-16 (16GB DDR4)', price: 1400 };
+              const opt2Cpu = (budget - opt2Mother.price - opt2Ram.price >= 5400)
+                ? { sku: 'QL-R7-8C', name: 'Quantum Line QL-R7-8C (8 Cores)', price: 5400 }
+                : { sku: 'FT-i5E-6C', name: 'Ferrotech FT-i5E-6C (6 Cores)', price: 3600 };
+
+              const opt2Total = opt2Mother.price + opt2Ram.price + opt2Cpu.price;
+
+              let response = `### 🖥️ Sugerencias de Armado (Presupuesto: $${budget.toLocaleString('es-MX')} MXN)\n\n`;
+              response += `Para armar tu equipo de forma 100% compatible (evitando conflictos físicos DDR4/DDR5), te sugiero las siguientes configuraciones:\n\n`;
+
+              if (opt1Fits) {
+                response += `#### Opción 1: Rendimiento Next-Gen (DDR5) - **Total: $${opt1Total.toLocaleString('es-MX')} MXN**\n`;
+                response += `*   **Procesador:** **${opt1Cpu.name}** (SKU: \`${opt1Cpu.sku}\`) - $${opt1Cpu.price.toLocaleString('es-MX')} MXN\n`;
+                response += `*   **Tarjeta Madre:** **${opt1Mother.name}** (SKU: \`${opt1Mother.sku}\`) - $${opt1Mother.price.toLocaleString('es-MX')} MXN (*Soporta DDR5*)\n`;
+                response += `*   **Memoria RAM:** **${opt1Ram.name}** (SKU: \`${opt1Ram.sku}\`) - $${opt1Ram.price.toLocaleString('es-MX')} MXN\n`;
+                response += `*   *Estado:* ✅ **100% Compatible (Todo DDR5)**. Velocidad y socket optimizados para máximo rendimiento.\n\n`;
+              }
+
+              response += `#### Opción 2: Costo-Beneficio Eficiente (DDR4) - **Total: $${opt2Total.toLocaleString('es-MX')} MXN**\n`;
+              response += `*   **Procesador:** **${opt2Cpu.name}** (SKU: \`${opt2Cpu.sku}\`) - $${opt2Cpu.price.toLocaleString('es-MX')} MXN\n`;
+              response += `*   **Tarjeta Madre:** **${opt2Mother.name}** (SKU: \`${opt2Mother.sku}\`) - $${opt2Mother.price.toLocaleString('es-MX')} MXN (*Soporta DDR4*)\n`;
+              response += `*   **Memoria RAM:** **${opt2Ram.name}** (SKU: \`${opt2Ram.sku}\`) - $${opt2Ram.price.toLocaleString('es-MX')} MXN\n`;
+              response += `*   *Estado:* ✅ **100% Compatible (Todo DDR4)**. Esta opción te deja un excelente margen de presupuesto para almacenamiento, chasis y fuente.\n\n`;
+              response += `⚠️ *Regla importante:* No combines la placa Z690 (DDR5) con memorias DDR4 ni la placa ITX-Mini (DDR4) con memorias DDR5, ya que son incompatibles físicamente.`;
+
+              responseText = response;
+            } else if (isGamerQuery) {
+              responseText = `Para una computadora gamer con excelente relación calidad-precio, te recomiendo los siguientes componentes esenciales de nuestro catálogo:\n\n` +
+                `*   **NovaByte NB-RTX90** (SKU: \`NB-RTX90\`) - Tarjeta de Video potente para gaming ($8,500.00 MXN).\n` +
+                `*   **Quantum Line QL-DDR5-32** (SKU: \`QL-DDR5-32\`) - Memoria RAM DDR5 de alto rendimiento ($3,800.00 MXN).\n` +
+                `*   **TechCore TC-Z690** (SKU: \`TC-Z690\`) - Tarjeta Madre con soporte DDR5 ($4,500.00 MXN).`;
+            } else if (isPriceQuery) {
+              responseText = `¿De qué material o equipo ocupas saber el precio? Por favor, indícame el SKU o nombre del modelo del equipo que te interesa consultar.`;
+            } else if (isCompatQuery) {
+              responseText = `¿De qué componentes ocupas verificar la compatibilidad? Por favor, indícame la memoria RAM, procesador o tarjeta madre que deseas validar.`;
+            } else if (isWarrantyQuery) {
+              responseText = `¿De qué material o equipo deseas consultar la garantía? Por favor, indícame el SKU o nombre del modelo.`;
+            } else if (isManualQuery) {
+              responseText = `¿De qué material o equipo necesitas el manual de usuario? Por favor, indícame el SKU o nombre del modelo.`;
+            } else {
+              // 2. Si no coincide ninguna intención, buscar sugerencias basadas en palabras clave
+              const suggestions = productsList
+                .map(p => {
+                  const skuNorm = normalizeText(p.sku);
+                  const nameNorm = normalizeText(p.name);
+                  const categoryNorm = normalizeText(p.category);
+                  const descriptionNorm = normalizeText(p.description || '');
+                  
+                  let matchCount = 0;
+                  words.forEach(word => {
+                    if (nameNorm.includes(word) || skuNorm.includes(word) || categoryNorm.includes(word) || descriptionNorm.includes(word)) {
+                      matchCount++;
+                    }
+                  });
+                  return { product: p, matchCount };
+                })
+                .filter(item => item.matchCount > 0)
+                .sort((a, b) => b.matchCount - a.matchCount)
+                .slice(0, 3)
+                .map(item => item.product);
+
+              if (suggestions.length > 0) {
+                responseText = `El material solicitado no existe en nuestro catálogo. Te sugiero estas opciones válidas similares:\n\n` +
+                  suggestions.map(p => `*   **${p.name}** (SKU: \`${p.sku}\`) - $${p.price.toLocaleString('es-MX')} MXN | Almacén: ${p.warehouse_location || p.warehouse || 'Almacén Central'} (Stock: ${p.stock} u.)`).join('\n');
               } else {
                 const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hello', 'hi', 'hey', 'que tal', 'saludos'];
                 const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '));
