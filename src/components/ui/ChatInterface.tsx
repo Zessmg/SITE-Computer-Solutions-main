@@ -98,9 +98,23 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
 
       // Interceptar intención de cotización en estado inactivo (idle)
       if (activeStep === 'idle') {
-        const isQuote = cleanQuery.includes('cotizacion') || cleanQuery.includes('cotizaciones') || cleanQuery.includes('cotizar');
+        const isGreeting = cleanQuery.includes('hola') || cleanQuery.includes('buenos dias') || cleanQuery.includes('buenas tardes') || cleanQuery.includes('buen dia') || cleanQuery.includes('buenas noches');
+        const hasQuoteKeyword = cleanQuery.includes('cotizacion') || cleanQuery.includes('cotizaciones') || cleanQuery.includes('cotizar');
+        const isCompatibilityQuery = cleanQuery.includes('compatib') || cleanQuery.includes('compatible');
         
-        if (isQuote) {
+        const isQuoteIntent = hasQuoteKeyword && !isCompatibilityQuery && (
+          isGreeting || 
+          cleanQuery === 'cotizacion' || 
+          cleanQuery === 'cotizaciones' || 
+          cleanQuery === 'cotizar' ||
+          cleanQuery.startsWith('cotizacion') ||
+          cleanQuery.startsWith('cotizar') ||
+          cleanQuery.includes('nueva cotizacion') ||
+          cleanQuery.includes('crear cotizacion') ||
+          cleanQuery.includes('iniciar cotizacion')
+        );
+        
+        if (isQuoteIntent) {
           setActiveQuickAccess('cotizaciones');
           setQuotingState({
             step: 'waiting_client_name',
