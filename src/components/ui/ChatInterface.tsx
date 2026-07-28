@@ -20,6 +20,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [disambiguationOptions, setDisambiguationOptions] = useState<any[] | null>(null);
   
   // Quick Access selected item state
   const [activeQuickAccess, setActiveQuickAccess] = useState<string>('');
@@ -669,6 +670,34 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           if (categoryMismatch) {
             score -= 50;
           }
+
+          // 3. Penalizar discrepancia de marca (evita matchear Ferrotech si buscan NovaByte)
+          const brandKeywords = {
+            novabyte: ['novabyte', 'nova'],
+            vertex: ['vertex'],
+            techcore: ['techcore'],
+            quantum: ['quantum'],
+            ferrotech: ['ferrotech'],
+            omnibytes: ['omnibytes', 'omni'],
+            bright: ['bright', 'circuit', 'bright circuit']
+          };
+
+          let brandMismatch = false;
+          const productBrand = p.brand ? p.brand.toLowerCase() : '';
+          
+          for (const [key, keywords] of Object.entries(brandKeywords)) {
+            const queryHasKeyword = keywords.some(kw => cleanQuery.includes(kw));
+            if (queryHasKeyword) {
+              const productMatchesBrand = productBrand.includes(key);
+              if (!productMatchesBrand) {
+                brandMismatch = true;
+              }
+            }
+          }
+
+          if (brandMismatch) {
+            score -= 50; // Gran penalización por discrepancia de marca
+          }
           
           // Peso extra por coincidencias directas en nombre o SKU
           words.forEach(word => {
@@ -689,17 +718,52 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       let matchedProduct = null;
       let isAmbiguous = false;
       let ambiguousProducts: any[] = [];
-      
-      if (candidates.length > 0) {
-        const topScore = candidates[0].score;
-        // Encontrar candidatos que tengan la misma puntuación máxima o muy similar (dentro de 5 puntos)
-        const topCandidates = candidates.filter(c => topScore - c.score <= 5);
+
+      // 0. Si hay opciones de desambiguación pendientes, verificar si el mensaje del usuario selecciona una
+      if (disambiguationOptions && disambiguationOptions.length > 0) {
+        const cleanReply = cleanQuery.trim();
+        const matches = disambiguationOptions.filter(p => {
+          const skuNorm = normalizeText(p.sku);
+          const nameNorm = normalizeText(p.name);
+          const descNorm = normalizeText(p.description || '');
+          const priceStr = String(p.price);
+          
+          return cleanReply.includes(skuNorm) ||
+            cleanReply.includes(nameNorm) ||
+            descNorm.includes(cleanReply) ||
+            cleanReply.includes(priceStr) ||
+            (cleanReply === 'gold' && (descNorm.includes('gold') || nameNorm.includes('gold'))) ||
+            (cleanReply === 'bronce' && (descNorm.includes('bronce') || descNorm.includes('bronze') || nameNorm.includes('bronce'))) ||
+            (cleanReply === 'bronze' && (descNorm.includes('bronce') || descNorm.includes('bronze') || nameNorm.includes('bronze')));
+        });
         
-        if (topCandidates.length > 1) {
+        if (matches.length === 1) {
+          matchedProduct = matches[0];
+          setDisambiguationOptions(null);
+        } else if (matches.length > 1) {
           isAmbiguous = true;
-          ambiguousProducts = topCandidates.map(c => c.product);
+          ambiguousProducts = matches;
         } else {
-          matchedProduct = candidates[0].product;
+          // Si no coincide con ninguna de las opciones anteriores, limpiar e intentar búsqueda normal
+          setDisambiguationOptions(null);
+        }
+      }
+      
+      if (!matchedProduct && !isAmbiguous) {
+        if (candidates.length > 0) {
+          const topScore = candidates[0].score;
+          // Encontrar candidatos que tengan la misma puntuación máxima o muy similar (dentro de 5 puntos)
+          const topCandidates = candidates.filter(c => topScore - c.score <= 5);
+          
+          if (topCandidates.length > 1) {
+            isAmbiguous = true;
+            ambiguousProducts = topCandidates.map(c => c.product);
+            // Guardar opciones para el siguiente turno
+            setDisambiguationOptions(ambiguousProducts);
+          } else {
+            matchedProduct = candidates[0].product;
+            setDisambiguationOptions(null);
+          }
         }
       }
 
@@ -713,11 +777,18 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         
         const optionsDesc = ambiguousProducts.map(p => {
           const desc = p.description.toLowerCase();
-          const type = desc.includes('bronze') || desc.includes('bronce') ? 'Bronce' : desc.includes('gold') ? 'Gold' : p.name;
+          let type = p.name;
+          if (category.includes('fuente') || category.includes('psu')) {
+            type = desc.includes('bronze') || desc.includes('bronce') ? 'Bronce' : desc.includes('gold') ? 'Gold' : p.name;
+          }
           return `${type} ($${p.price.toLocaleString('es-MX')})`;
         }).join(' y ');
         
-        responseText = `Encontré dos fuentes ${brand} de 650W: ${optionsDesc}. ¿Cuál te interesa?`;
+        if (category.includes('fuente') || category.includes('psu')) {
+          responseText = `Encontré dos fuentes ${brand} de 650W: ${optionsDesc}. ¿Cuál te interesa?`;
+        } else {
+          responseText = `Encontré varias opciones de ${category} marca ${brand}: ${optionsDesc}. ¿A cuál de ellas te refieres?`;
+        }
       } else if (matchedProduct) {
         // Helper to dynamic-assign clean specifications to avoid 'N/A' answers
         const getCleanSpecs = (product: any): string => {

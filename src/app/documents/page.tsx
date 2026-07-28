@@ -24,6 +24,9 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return 'Intel Core i5-12400 (hasta 4.4GHz, 6 Cores)';
     if (cat.includes('mother') || cat.includes('madre')) return 'Socket Intel LGA1700 (12ª/13ª/14ª Gen)';
     if (cat.includes('graf') || cat.includes('video')) return 'GPU Clock 1410 MHz / Boost 1620 MHz';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return 'Compatibilidad universal ATX12V';
+    if (cat.includes('switch') || cat.includes('red')) return 'Procesador RISC integrado de alto rendimiento';
+    if (cat.includes('nas')) return 'Intel Celeron N5105 Quad-Core (hasta 2.9GHz)';
     return 'Compatibilidad universal x86/x64';
   }
   
@@ -32,6 +35,9 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return '16GB DDR4 3200MHz DIMM';
     if (cat.includes('mother') || cat.includes('madre')) return '4x DDR5 DIMM slots (hasta 192GB, 5600MHz)';
     if (cat.includes('graf') || cat.includes('video')) return '12GB GDDR6 (192-bit)';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return 'No aplica (Suministro eléctrico)';
+    if (cat.includes('switch') || cat.includes('red')) return '512MB de memoria RAM de búfer integrada';
+    if (cat.includes('nas')) return '4GB DDR4 SO-DIMM (ampliable a 16GB)';
     return 'N/A (Módulo independiente)';
   }
   
@@ -40,6 +46,9 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return '1TB NVMe PCIe M.2 SSD';
     if (cat.includes('mother') || cat.includes('madre')) return '3x M.2 NVMe PCIe 4.0, 4x SATA III';
     if (cat.includes('graf') || cat.includes('video')) return 'Interfaz PCIe 4.0 x16';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return 'No aplica (Alimentación Directa)';
+    if (cat.includes('switch') || cat.includes('red')) return '128MB de memoria Flash integrada';
+    if (cat.includes('nas')) return '4 bahías SATA de 3.5"/2.5" Hotswap (hasta 72TB)';
     return 'N/A';
   }
   
@@ -48,6 +57,8 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return 'Intel UHD Graphics 730';
     if (cat.includes('mother') || cat.includes('madre')) return 'Salidas HDMI 2.1 / DisplayPort 1.4';
     if (cat.includes('graf') || cat.includes('video')) return 'Nvidia GeForce RTX';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return 'No aplica (Alimentación de GPU dedicada PCIe)';
+    if (cat.includes('switch') || cat.includes('red') || cat.includes('nas')) return 'Controlador integrado de diagnóstico';
     return 'N/A';
   }
   
@@ -56,6 +67,14 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return '180W (Fuente integrada 80 Plus)';
     if (cat.includes('mother') || cat.includes('madre')) return 'Conector ATX 24-pin + EPS 8-pin';
     if (cat.includes('graf') || cat.includes('video')) return '170W (TDP sugerido: Fuente 550W+)';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) {
+      const skuNorm = (sku || '').toLowerCase();
+      if (skuNorm.includes('500')) return '500 Watts nominales (Eficiencia 80+ Bronze)';
+      if (skuNorm.includes('850')) return '850 Watts nominales (Eficiencia 80+ Gold)';
+      return '650 Watts nominales (Eficiencia 80+ Gold)';
+    }
+    if (cat.includes('switch') || cat.includes('red')) return '30W (Soporte PoE/PoE+)';
+    if (cat.includes('nas')) return '60W (Adaptador AC de alimentación externa)';
     return '1.2V - 1.35V de bajo voltaje';
   }
   
@@ -64,6 +83,9 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return '29.0 x 9.2 x 34.0 cm';
     if (cat.includes('mother') || cat.includes('madre')) return '30.5 x 24.4 cm (Formato ATX)';
     if (cat.includes('graf') || cat.includes('video')) return '24.2 x 11.2 x 4.0 cm (Dual-slot)';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return '15.0 x 14.0 x 8.6 cm (Formato ATX)';
+    if (cat.includes('switch') || cat.includes('red')) return '44.0 x 20.0 x 4.4 cm (Formato 1U Rack)';
+    if (cat.includes('nas')) return '16.5 x 16.0 x 22.0 cm';
     return '13.3 x 3.4 x 0.7 cm';
   }
   
@@ -72,6 +94,9 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
     if (cat.includes('desktop')) return '5.20 kg';
     if (cat.includes('mother') || cat.includes('madre')) return '1.10 kg';
     if (cat.includes('graf') || cat.includes('video')) return '0.85 kg';
+    if (cat.includes('fuente') || cat.includes('power') || cat.includes('psu')) return '1.95 kg';
+    if (cat.includes('switch') || cat.includes('red')) return '2.80 kg';
+    if (cat.includes('nas')) return '2.20 kg';
     return '0.04 kg';
   }
 

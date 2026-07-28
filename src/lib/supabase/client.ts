@@ -1738,43 +1738,47 @@ const SEED_PRODUCTS = [
  * SELECT: Obtener todos los productos.
  */
 export async function fetchProducts(categoryFilter?: string, searchFilter?: string): Promise<any[]> {
+  let products = [...SEED_PRODUCTS];
+
   if (isSupabaseConfigured && supabase) {
     try {
-      let query = supabase.from('products').select('*');
-      
-      if (categoryFilter && categoryFilter !== 'Todos') {
-        query = query.eq('category', categoryFilter);
-      }
-      if (searchFilter) {
-        query = query.ilike('name', `%${searchFilter}%`);
-      }
-      
-      const { data, error } = await query;
+      const { data, error } = await supabase.from('products').select('*');
       if (!error && data && data.length > 0) {
-        return data.map(item => ({
+        const dbProducts = data.map(item => ({
           ...item,
           specs: item.specs || { warranty_months: 36 }
         }));
+        
+        // Combinar datos de Supabase y semillas locales (evitando duplicados por SKU)
+        const merged = [...dbProducts];
+        SEED_PRODUCTS.forEach(sp => {
+          if (!merged.some(dp => dp.sku === sp.sku)) {
+            merged.push(sp);
+          }
+        });
+        products = merged;
+      } else {
+        console.warn('Supabase fetchProducts empty or error, using local:', error || 'Empty table');
       }
-      console.warn('Supabase fetchProducts empty or error, falling back:', error || 'Empty table');
     } catch (err) {
-      console.error('Supabase fetchProducts exception:', err);
+      console.error('Supabase fetchProducts exception, using local:', err);
     }
+  } else {
+    products = getLocalStorageData<any[]>('site_solutions_products', SEED_PRODUCTS);
   }
 
-  // Fallback
-  const products = getLocalStorageData<any[]>('site_solutions_products', SEED_PRODUCTS);
+  // Filtrar la lista final combinada de productos
   let filtered = [...products];
   
   if (categoryFilter && categoryFilter !== 'Todos') {
-    filtered = filtered.filter(p => p.category === categoryFilter);
+    filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
   }
   if (searchFilter) {
     const term = searchFilter.toLowerCase();
     filtered = filtered.filter(p => 
       p.name.toLowerCase().includes(term) || 
       p.sku.toLowerCase().includes(term) ||
-      p.description.toLowerCase().includes(term)
+      (p.description && p.description.toLowerCase().includes(term))
     );
   }
   return filtered;
