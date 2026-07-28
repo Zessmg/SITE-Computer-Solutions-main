@@ -97,6 +97,319 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       const cleanQuery = normalizeText(userMessage.text);
       let activeStep = quotingState.step;
 
+      // Interceptar consultas compuestas de múltiples materiales
+      if (activeStep === 'idle') {
+        // 1. Verificar primero si es una comparativa de precio/stock entre múltiples productos
+        const foundProducts: any[] = [];
+        for (const p of productsList) {
+          const skuNorm = normalizeText(p.sku);
+          const nameNorm = normalizeText(p.name);
+          if (cleanQuery.includes(skuNorm) || cleanQuery.includes(nameNorm)) {
+            if (!foundProducts.some(fp => fp.sku === p.sku)) {
+              foundProducts.push(p);
+            }
+          }
+        }
+
+        const isComparisonQuery = (cleanQuery.includes('barat') || cleanQuery.includes('economic') || cleanQuery.includes('caro') || cleanQuery.includes('disponib') || cleanQuery.includes('stock')) && 
+                                  foundProducts.length >= 2;
+
+        if (isComparisonQuery) {
+          const sortedByPrice = [...foundProducts].sort((a, b) => a.price - b.price);
+          const cheapest = sortedByPrice[0];
+          
+          const sortedByStock = [...foundProducts].sort((a, b) => b.stock - a.stock);
+          const highestStock = sortedByStock[0];
+
+          let responseText = `### 📊 Comparativa de Equipos\n\n`;
+          responseText += `He comparado los siguientes equipos solicitados:\n`;
+          foundProducts.forEach(p => {
+            responseText += `*   **${p.name}** (SKU: \`${p.sku}\`): Precio de **$${p.price.toLocaleString('es-MX')} MXN** | Stock de **${p.stock} unidades** (Almacén: ${p.warehouse_location || 'Almacén Central'}).\n`;
+          });
+          responseText += `\n`;
+          
+          if (cleanQuery.includes('barat') || cleanQuery.includes('economic')) {
+            responseText += `💰 **El producto más barato** es **${cheapest.name}** con un precio de **$${cheapest.price.toLocaleString('es-MX')} MXN**.\n`;
+          }
+          
+          if (cleanQuery.includes('disponib') || cleanQuery.includes('stock')) {
+            responseText += `📦 **El equipo con mejor disponibilidad** es **${highestStock.name}**, contando actualmente con **${highestStock.stock} unidades** en stock.\n`;
+          }
+
+          const assistantMessage: ChatMessage = {
+            id: 'm-' + Math.random().toString(36).substr(2, 9),
+            sender: 'assistant',
+            text: responseText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+          try {
+            insertHistoryRecord({
+              date: new Date().toISOString().split('T')[0],
+              client: clientName,
+              query: userMessage.text,
+              response: responseText,
+              status: 'Aprobada',
+              metadata: {
+                user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+              }
+            });
+          } catch (e) {
+            console.error("Error inserting auto history:", e);
+          }
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        const isCompoundQuery = cleanQuery.includes(' y ') && 
+                                (cleanQuery.includes('existe') || cleanQuery.includes('revis') || cleanQuery.includes('material') || cleanQuery.includes('producto'));
+
+        if (isCompoundQuery) {
+          const getCandidatesForSubQuery = (subQuery: string) => {
+            const subClean = normalizeText(subQuery);
+            const subStopWords = [
+              'de', 'del', 'con', 'para', 'por', 'un', 'una', 'unos', 'unas', 
+              'el', 'la', 'los', 'las', 'y', 'o', 'en', 'unidades', 'cotiza', 
+              'cotizame', 'ejemplo', 'ejemplos', 'disponibles', 'precio', 
+              'precios', 'stock', 'garantia', 'garantias', 'manual', 'manuales',
+              'que', 'a', 'al', 'los', 'sus', 'como', 'saber', 'cuanto', 'cuesta', 'unidad'
+            ];
+            const subWords = subClean
+              .split(/\s+/)
+              .filter(w => w.length > 1 && !subStopWords.includes(w) && !/^\d+$/.test(w));
+            
+            const subCandidates: { product: any; score: number }[] = [];
+            
+            for (const p of productsList) {
+              const skuNorm = normalizeText(p.sku);
+              const nameNorm = normalizeText(p.name);
+              const categoryNorm = normalizeText(p.category);
+              const descriptionNorm = normalizeText(p.description || '');
+              
+              let score = 0;
+              if (subClean.includes(skuNorm)) {
+                score += 100;
+              }
+              
+              let matchedWordsCount = 0;
+              subWords.forEach(word => {
+                if (nameNorm.includes(word) || skuNorm.includes(word) || categoryNorm.includes(word) || descriptionNorm.includes(word)) {
+                  matchedWordsCount++;
+                }
+              });
+              
+              if (matchedWordsCount > 0) {
+                score += (matchedWordsCount / subWords.length) * 50;
+                
+                const queryNumbers = subClean.match(/\d{2,}/g) || [];
+                if (queryNumbers.length > 0) {
+                  const productNumbersText = `${skuNorm} ${nameNorm} ${descriptionNorm}`;
+                  const matchesNumbers = queryNumbers.every(num => productNumbersText.includes(num));
+                  if (matchesNumbers) {
+                    score += 30;
+                  } else {
+                    score -= 40;
+                  }
+                }
+
+                const categoryKeywords = {
+                  laptop: ['laptop', 'laptops', 'portatil', 'notebook'],
+                  ram: ['ram', 'memoria', 'memorias'],
+                  gpu: ['gpu', 'grafica', 'video', 'tarjeta de video', 'tarjeta grafica'],
+                  motherboard: ['madre', 'motherboard', 'placa', 'placa base'],
+                  processor: ['procesador', 'cpu', 'procesadores'],
+                  switch: ['switch', 'switches', 'red'],
+                  nas: ['nas', 'servidor nas'],
+                  power_supply: ['fuente', 'fuentes', 'power supply', 'psu']
+                };
+
+                let categoryMismatch = false;
+                const productCategory = p.category.toLowerCase();
+                
+                for (const [key, keywords] of Object.entries(categoryKeywords)) {
+                  const queryHasKeyword = keywords.some(kw => subClean.includes(kw));
+                  if (queryHasKeyword) {
+                    const productMatchesCategory = productCategory.includes(key) || 
+                      (key === 'gpu' && (productCategory.includes('gpu') || productCategory.includes('video') || productCategory.includes('grafica'))) ||
+                      (key === 'motherboard' && (productCategory.includes('mother') || productCategory.includes('placa') || productCategory.includes('madre'))) ||
+                      (key === 'ram' && (productCategory.includes('ram') || productCategory.includes('memoria'))) ||
+                      (key === 'power_supply' && (productCategory.includes('fuente') || productCategory.includes('psu') || productCategory.includes('alimentacion')));
+                    
+                    if (!productMatchesCategory) {
+                      categoryMismatch = true;
+                    }
+                  }
+                }
+
+                if (categoryMismatch) {
+                  score -= 50;
+                }
+
+                const brandKeywords = {
+                  novabyte: ['novabyte', 'nova'],
+                  vertex: ['vertex'],
+                  techcore: ['techcore'],
+                  quantum: ['quantum'],
+                  ferrotech: ['ferrotech'],
+                  omnibytes: ['omnibytes', 'omni'],
+                  bright: ['bright', 'circuit', 'bright circuit']
+                };
+
+                let brandMismatch = false;
+                const productBrand = p.brand ? p.brand.toLowerCase() : '';
+                
+                for (const [key, keywords] of Object.entries(brandKeywords)) {
+                  const queryHasKeyword = keywords.some(kw => subClean.includes(kw));
+                  if (queryHasKeyword) {
+                    const productMatchesBrand = productBrand.includes(key);
+                    if (!productMatchesBrand) {
+                      brandMismatch = true;
+                    }
+                  }
+                }
+
+                if (brandMismatch) {
+                  score -= 50;
+                }
+                
+                subWords.forEach(word => {
+                  if (nameNorm.includes(word) || skuNorm.includes(word)) {
+                    score += 5;
+                  }
+                });
+              }
+              
+              if (score >= 15) {
+                subCandidates.push({ product: p, score: score });
+              }
+            }
+            
+            subCandidates.sort((a, b) => b.score - a.score);
+            return subCandidates;
+          };
+
+          const parts = cleanQuery.split(/\s+y\s+(?:la\s+|el\s+)?/);
+          if (parts.length > 1) {
+            let cleanPart1 = parts[0];
+            const introPhrases = [
+              'revisame si existen estos materiales',
+              'revisame si existen estos productos',
+              'revisa si existen estos materiales',
+              'revisa si existen estos productos',
+              'existen estos materiales',
+              'existen estos productos',
+              'existe el producto',
+              'existe la',
+              'existe el',
+              'existe',
+              'buscame si existen',
+              'buscame si existe'
+            ];
+            introPhrases.forEach(phrase => {
+              if (cleanPart1.startsWith(phrase)) {
+                cleanPart1 = cleanPart1.substring(phrase.length).trim();
+              }
+            });
+            cleanPart1 = cleanPart1.replace(/^[:\s]+/, '').trim();
+            
+            const cleanPart2 = parts[1].trim();
+
+            const cand1 = getCandidatesForSubQuery(cleanPart1);
+            const cand2 = getCandidatesForSubQuery(cleanPart2);
+
+            let combinedResponse = '### 🔍 Resultados de búsqueda de materiales:\n\n';
+            
+            const formatPartOutput = (partTextOriginal: string, cands: any[]) => {
+              const partText = partTextOriginal.charAt(0).toUpperCase() + partTextOriginal.slice(1);
+              if (cands.length === 0) {
+                const subClean = normalizeText(partTextOriginal);
+                const subStopWords = [
+                  'de', 'del', 'con', 'para', 'por', 'un', 'una', 'unos', 'unas', 
+                  'el', 'la', 'los', 'las', 'y', 'o', 'en', 'unidades', 'cotiza', 
+                  'cotizame', 'ejemplo', 'ejemplos', 'disponibles', 'precio', 
+                  'precios', 'stock', 'garantia', 'garantias', 'manual', 'manuales',
+                  'que', 'a', 'al', 'los', 'sus', 'como', 'saber', 'cuanto', 'cuesta', 'unidad'
+                ];
+                const subWords = subClean
+                  .split(/\s+/)
+                  .filter(w => w.length > 1 && !subStopWords.includes(w) && !/^\d+$/.test(w));
+
+                const suggestions = productsList
+                  .map(p => {
+                    let matchCount = 0;
+                    subWords.forEach(w => {
+                      if (p.name.toLowerCase().includes(w) || p.sku.toLowerCase().includes(w) || p.category.toLowerCase().includes(w)) {
+                        matchCount++;
+                      }
+                    });
+                    return { product: p, matchCount };
+                  })
+                  .filter(item => item.matchCount > 0)
+                  .sort((a, b) => b.matchCount - a.matchCount)
+                  .slice(0, 2)
+                  .map(item => item.product);
+
+                let out = `*   **"${partText}"**: ❌ **El material no existe en nuestro catálogo**.\n`;
+                if (suggestions.length > 0) {
+                  out += `    *Sugerencias similares válidas:*\n` +
+                    suggestions.map(p => `    *   **${p.name}** (SKU: \`${p.sku}\`) - $${p.price.toLocaleString('es-MX')} MXN | Stock: ${p.stock} u.`).join('\n') + `\n`;
+                }
+                return out;
+              } else {
+                const topScore = cands[0].score;
+                const matches = cands.filter(c => topScore - c.score <= 5).map(c => c.product);
+                
+                if (matches.length > 1) {
+                  let out = `*   **"${partText}"**: ⚠️ **Se encontraron múltiples modelos que podrían coincidir**:\n`;
+                  matches.forEach(p => {
+                    out += `    *   **${p.name}** (SKU: \`${p.sku}\`) - $${p.price.toLocaleString('es-MX')} MXN | Stock: ${p.stock} u. (${p.description || ''})\n`;
+                  });
+                  return out;
+                } else {
+                  const p = matches[0];
+                  return `*   **"${partText}"**: ✅ **Existe en catálogo**:\n` +
+                         `    *   **${p.name}** (SKU: \`${p.sku}\`) - Precio: $${p.price.toLocaleString('es-MX')} MXN | Almacén: ${p.warehouse_location || 'Almacén Central'} (Stock: ${p.stock} u.)\n`;
+                }
+              }
+            };
+
+            combinedResponse += formatPartOutput(cleanPart1, cand1);
+            combinedResponse += `\n`;
+            combinedResponse += formatPartOutput(cleanPart2, cand2);
+
+            const assistantMessage: ChatMessage = {
+              id: 'm-' + Math.random().toString(36).substr(2, 9),
+              sender: 'assistant',
+              text: combinedResponse,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
+            try {
+              insertHistoryRecord({
+                date: new Date().toISOString().split('T')[0],
+                client: clientName,
+                query: userMessage.text,
+                response: combinedResponse,
+                status: 'Aprobada',
+                metadata: {
+                  user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
+                }
+              });
+            } catch (e) {
+              console.error("Error inserting auto history:", e);
+            }
+
+            setMessages(prev => [...prev, assistantMessage]);
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
       // Interceptar intención de cotización en estado inactivo (idle)
       if (activeStep === 'idle') {
         const isGreeting = cleanQuery.includes('hola') || cleanQuery.includes('buenos dias') || cleanQuery.includes('buenas tardes') || cleanQuery.includes('buen dia') || cleanQuery.includes('buenas noches');
