@@ -624,8 +624,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
         if (matchedWordsCount > 0) {
           score += (matchedWordsCount / words.length) * 50;
           
-          // Extraer números de 2 o más dígitos (ej. 90, 95, 9090, 4080)
-          const queryNumbers = cleanQuery.match(/\b\d{2,}\b/g) || [];
+          // 1. Extraer números de 2 o más dígitos, incluso incrustados en texto (ej. 999 en Z999X)
+          const queryNumbers = cleanQuery.match(/\d{2,}/g) || [];
           if (queryNumbers.length > 0) {
             const productNumbersText = `${skuNorm} ${nameNorm} ${descriptionNorm}`;
             const matchesNumbers = queryNumbers.every(num => productNumbersText.includes(num));
@@ -634,6 +634,38 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
             } else {
               score -= 40; // Penalizar si el número consultado no existe en este producto
             }
+          }
+
+          // 2. Penalizar discrepancia de categoría de producto (evita matchear Laptops si buscan GPUs/Placas)
+          const categoryKeywords = {
+            laptop: ['laptop', 'laptops', 'portatil', 'notebook'],
+            ram: ['ram', 'memoria', 'memorias'],
+            gpu: ['gpu', 'grafica', 'video', 'tarjeta de video', 'tarjeta grafica'],
+            motherboard: ['madre', 'motherboard', 'placa', 'placa base'],
+            processor: ['procesador', 'cpu', 'procesadores'],
+            switch: ['switch', 'switches', 'red'],
+            nas: ['nas', 'servidor nas']
+          };
+
+          let categoryMismatch = false;
+          const productCategory = p.category.toLowerCase();
+          
+          for (const [key, keywords] of Object.entries(categoryKeywords)) {
+            const queryHasKeyword = keywords.some(kw => cleanQuery.includes(kw));
+            if (queryHasKeyword) {
+              const productMatchesCategory = productCategory.includes(key) || 
+                (key === 'gpu' && (productCategory.includes('gpu') || productCategory.includes('video') || productCategory.includes('grafica'))) ||
+                (key === 'motherboard' && (productCategory.includes('mother') || productCategory.includes('placa') || productCategory.includes('madre'))) ||
+                (key === 'ram' && (productCategory.includes('ram') || productCategory.includes('memoria')));
+              
+              if (!productMatchesCategory) {
+                categoryMismatch = true;
+              }
+            }
+          }
+
+          if (categoryMismatch) {
+            score -= 50;
           }
           
           // Peso extra por coincidencias directas en nombre o SKU
