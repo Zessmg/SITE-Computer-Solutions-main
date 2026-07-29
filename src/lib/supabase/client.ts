@@ -1870,7 +1870,7 @@ export async function updateProduct(id: string, updates: { price: number; descri
 
 const SEED_USERS = [
   { id: 'u-1', name: 'M. Garcia', email: 'm.garcia@site.com', role: 'Ventas', status: 'Activo' },
-  { id: 'u-2', name: 'L. Reyes', email: 'l.reyes@site.com', role: 'Tecnico', status: 'Activo' },
+  { id: 'u-2', name: 'L. Reyes', email: 'l.reyes@site.com', role: 'Soporte', status: 'Activo' },
   { id: 'u-3', name: 'A. Diaz', email: 'a.diaz@site.com', role: 'Ventas', status: 'Bloqueado' },
   { id: 'u-4', name: 'R. Salas', email: 'r.salas@site.com', role: 'Administrador', status: 'Activo' }
 ];

@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 
 export default function Home() {
-  const [currentRole, setCurrentRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
+  const [currentRole, setCurrentRole] = useState<'vendedor' | 'soporte' | 'admin'>('vendedor');
   const [activeTab, setActiveTab] = useState<'consulta' | 'historial' | 'aprobaciones' | 'administracion' | 'productos' | 'usuarios'>('consulta');
   const [isAdminMode, setIsAdminMode] = useState(false);
   
@@ -57,7 +57,7 @@ export default function Home() {
   // Auth state
   const [user, setUser] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [baseRole, setBaseRole] = useState<'vendedor' | 'soporte' | 'tecnico' | 'admin'>('vendedor');
+  const [baseRole, setBaseRole] = useState<'vendedor' | 'soporte' | 'admin'>('vendedor');
   const [selectedLoginEmail, setSelectedLoginEmail] = useState('admin@sitesolutions.com');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -90,12 +90,10 @@ export default function Home() {
           
           if (registered) {
             const roleStr = registered.role.toLowerCase();
-            let resolved: 'vendedor' | 'soporte' | 'tecnico' | 'admin' = 'vendedor';
+            let resolved: 'vendedor' | 'soporte' | 'admin' = 'vendedor';
             if (roleStr === 'administrador' || roleStr === 'admin') {
               resolved = 'admin';
-            } else if (roleStr === 'tecnico' || roleStr === 'técnico') {
-              resolved = 'tecnico';
-            } else if (roleStr === 'soporte') {
+            } else if (roleStr === 'tecnico' || roleStr === 'técnico' || roleStr === 'soporte') {
               resolved = 'soporte';
             }
             setBaseRole(resolved);
@@ -103,13 +101,11 @@ export default function Home() {
             setIsAdminMode(resolved === 'admin');
           } else {
             // Asignación por defecto según el prefijo del correo si no está en el directorio
-            let resolved: 'vendedor' | 'soporte' | 'tecnico' | 'admin' = 'vendedor';
+            let resolved: 'vendedor' | 'soporte' | 'admin' = 'vendedor';
             if (email.startsWith('admin') || email === 'geeraa123@gmail.com') {
               resolved = 'admin';
-            } else if (email.startsWith('soporte')) {
+            } else if (email.startsWith('soporte') || email.startsWith('tecnico')) {
               resolved = 'soporte';
-            } else if (email.startsWith('tecnico')) {
-              resolved = 'tecnico';
             }
             setBaseRole(resolved);
             setCurrentRole(resolved);
@@ -239,26 +235,47 @@ export default function Home() {
         };
       case 'soporte':
         return {
-          title: 'Asistente de IA para Soporte Técnico 24/7',
-          desc: 'Busca diagnósticos rápidos de hardware corporativo, consulta incidencias recurrentes de clientes, firmas de firmware y estados de garantía.',
-          badge: '🛠️ Vista de Diagnóstico de Soporte'
-        };
-      case 'tecnico':
-        return {
-          title: 'Asistente de Especificación de Silicio',
-          desc: 'Detalles profundos de arquitectura de CPU, sockets de motherboard, requerimientos térmicos (TDP), voltajes y esquemas de placa madre.',
-          badge: '⚡ Vista de Ingeniería Hardware'
+          title: 'Asistente de IA para Soporte y Garantías',
+          desc: 'Resuelve dudas de clientes sobre garantías, fallas comunes y procedimientos de devolución, con acceso directo a manuales técnicos y políticas actualizadas.',
+          badge: '🛠️ Soporte y Diagnóstico de TI'
         };
       case 'admin':
         return {
-          title: 'Asistente de Control y Carga de Catálogos',
-          desc: 'Carga nuevos catálogos maestros Excel y PDF, depura errores estructurales del control de calidad e indexa la información en el motor de IA.',
+          title: 'Centro de Control y Validación de Catálogos',
+          desc: 'Supervisa la carga y validación de catálogos, administra usuarios y roles del sistema, y respalda a Ventas en la aprobación de cotizaciones cuando es necesario.',
           badge: '👑 Panel de Control del Administrador'
         };
     }
   };
 
   const headerInfo = getRoleHeaderInfo();
+
+  const getMetricLabels = () => {
+    if (currentRole === 'soporte') {
+      return {
+        label1: 'Consultas resueltas hoy',
+        label2: 'Garantías activas',
+        label3: 'Manuales disponibles',
+        label4: 'Revisiones de catálogos'
+      };
+    }
+    if (currentRole === 'admin') {
+      return {
+        label1: 'Usuarios activos',
+        label2: 'Catálogos por validar',
+        label3: 'Cotizaciones pendientes (respaldo)',
+        label4: 'Revisiones de catálogos'
+      };
+    }
+    return {
+      label1: 'Cotizaciones enviadas',
+      label2: 'Stock total',
+      label3: 'Cotizaciones pendientes por aprobar',
+      label4: 'Revisiones de catálogos'
+    };
+  };
+
+  const metricLabels = getMetricLabels();
 
   // -------------------------------------------------------------
   // RENDERING Auth Loading State
@@ -401,7 +418,6 @@ export default function Home() {
                 <option value="admin@sitesolutions.com">admin@sitesolutions.com (Rol: Administrador)</option>
                 <option value="ventas@sitesolutions.com">ventas@sitesolutions.com (Rol: Ventas)</option>
                 <option value="soporte@sitesolutions.com">soporte@sitesolutions.com (Rol: Soporte)</option>
-                <option value="tecnico@sitesolutions.com">tecnico@sitesolutions.com (Rol: Técnico)</option>
               </select>
             </div>
           )}
@@ -492,17 +508,6 @@ export default function Home() {
                       <span className="hidden lg:inline">Soporte</span>
                     </button>
                     <button
-                      onClick={() => setCurrentRole('tecnico')}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                        currentRole === 'tecnico' 
-                          ? 'bg-slate-850 text-cyan-400 border border-slate-700/60 shadow-md shadow-slate-950/40' 
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <Cpu className="w-3.5 h-3.5" />
-                      <span className="hidden lg:inline">Técnico</span>
-                    </button>
-                    <button
                       onClick={() => setCurrentRole('admin')}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                         currentRole === 'admin' 
@@ -531,7 +536,7 @@ export default function Home() {
           ) : (
             <div className="flex items-center gap-2 bg-slate-900 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 shadow-sm shadow-slate-950/20">
               <span className="text-slate-500 mr-1">Rol:</span>
-              <span className="text-cyan-400 capitalize font-bold">{currentRole === 'tecnico' ? 'Técnico' : currentRole}</span>
+              <span className="text-cyan-400 capitalize font-bold">{currentRole}</span>
             </div>
           )}
 
@@ -554,16 +559,12 @@ export default function Home() {
               <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shadow-lg transition-all duration-300 ${
                 currentRole === 'admin' 
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
-                  : currentRole === 'tecnico'
-                  ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                   : currentRole === 'soporte'
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                   : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
               }`}>
                 {currentRole === 'admin' ? (
                   <Terminal className="w-4 h-4 animate-pulse" />
-                ) : currentRole === 'tecnico' ? (
-                  <Cpu className="w-4 h-4" />
                 ) : currentRole === 'soporte' ? (
                   <Wrench className="w-4 h-4" />
                 ) : (
@@ -612,19 +613,19 @@ export default function Home() {
           {/* Metrics Panel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-[540px] shrink-0">
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Cotizaciones Enviadas</span>
+              <span className="text-[10px] text-slate-500 font-semibold block">{metricLabels.label1}</span>
               <strong className="text-lg font-bold text-slate-200 mt-1 block">{metrics.sentQuotes}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Stock Total</span>
+              <span className="text-[10px] text-slate-500 font-semibold block">{metricLabels.label2}</span>
               <strong className="text-lg font-bold text-emerald-400 mt-1 block">{metrics.totalStock}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Cotizaciones pendientes por aprobar</span>
+              <span className="text-[10px] text-slate-500 font-semibold block">{metricLabels.label3}</span>
               <strong className="text-lg font-bold text-amber-400 mt-1 block">{metrics.pendingQuotes}</strong>
             </div>
             <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl">
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Revisiones Catálogos</span>
+              <span className="text-[10px] text-slate-500 font-semibold block">{metricLabels.label4}</span>
               <strong className="text-lg font-bold text-cyan-400 mt-1 block">{metrics.pendingCatalogs}</strong>
             </div>
           </div>

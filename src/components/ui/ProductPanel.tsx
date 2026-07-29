@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 interface ProductPanelProps {
-  currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
+  currentRole: 'vendedor' | 'soporte' | 'admin';
 }
 
 export default function ProductPanel({ currentRole }: ProductPanelProps) {
@@ -364,28 +364,26 @@ export default function ProductPanel({ currentRole }: ProductPanelProps) {
                   )}
 
                   {currentRole === 'soporte' && (
-                    <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-xl text-xs space-y-1">
+                    <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-xl text-[11px] space-y-1">
                       <div className="text-amber-400 font-semibold block border-b border-slate-850 pb-1 mb-1">
-                        🛠️ Soporte
+                        🛠️ Soporte y Diagnóstico
                       </div>
                       <div className="truncate text-slate-300">
-                        <span className="text-slate-500 mr-1">Falla:</span> 
+                        <span className="text-slate-500 mr-1">Falla Común:</span> 
                         {p.support_info?.common_issue || 'Sin fallas'}
                       </div>
-                      <div className="text-slate-400">
-                        <span className="text-slate-500 mr-1">FW:</span> 
+                      <div className="text-slate-300">
+                        <span className="text-slate-500 mr-1">Firmware:</span> 
                         {p.support_info?.firmware_ver || 'v1.0.0'}
                       </div>
-                    </div>
-                  )}
-
-                  {currentRole === 'tecnico' && (
-                    <div className="bg-slate-900/60 border border-slate-850 p-3 rounded-xl text-[11px] space-y-1">
-                      <div className="text-cyan-400 font-semibold block border-b border-slate-850 pb-1 mb-1">
-                        ⚡ Hardware Specs
+                      <div className="truncate text-slate-300">
+                        <span className="text-slate-500 mr-1">CPU/Socket:</span> 
+                        {p.specs?.processor || 'N/A'}
                       </div>
-                      <div className="truncate text-slate-300"><span className="text-slate-500 mr-1">CPU:</span> {p.specs?.processor || 'N/A'}</div>
-                      <div className="truncate text-slate-300"><span className="text-slate-500 mr-1">RAM:</span> {p.specs?.ram || 'N/A'}</div>
+                      <div className="truncate text-slate-300">
+                        <span className="text-slate-500 mr-1">RAM/Esquema:</span> 
+                        {p.specs?.ram || 'N/A'}
+                      </div>
                     </div>
                   )}
                 </div>

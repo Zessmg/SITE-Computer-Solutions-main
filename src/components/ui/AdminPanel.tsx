@@ -5,7 +5,7 @@ import { fetchCatalogs, uploadCatalogFile, repairCatalogErrors, deleteCatalogs, 
 import { ShieldAlert, UploadCloud, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Play, RefreshCw, Trash2, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface AdminPanelProps {
-  currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
+  currentRole: 'vendedor' | 'soporte' | 'admin';
 }
 
 export default function AdminPanel({ currentRole }: AdminPanelProps) {

@@ -5,7 +5,7 @@ import { Send, CheckCircle2, MessageSquare, AlertCircle, Sparkles, Server, Lapto
 import { ChatMessage, insertHistoryRecord, fetchProducts } from '@/lib/supabase/client';
 
 interface ChatInterfaceProps {
-  currentRole: 'vendedor' | 'soporte' | 'tecnico' | 'admin';
+  currentRole: 'vendedor' | 'soporte' | 'admin';
   currentUser?: any;
 }
 
