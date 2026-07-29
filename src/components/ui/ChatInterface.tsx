@@ -1716,7 +1716,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                       className={getButtonClass('cotizaciones')}
                     >
                       <span>Cotizaciones</span>
-                      <span className={`w-2 h-2 rounded-full ${activeQuickAccess === 'cotizaciones' ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-cyan-500 animate-pulse'}`} />
+                      {activeQuickAccess === 'cotizaciones' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
                     </button>
                     
                     <button
