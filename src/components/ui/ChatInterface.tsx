@@ -14,7 +14,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
     {
       id: 'm-init',
       sender: 'assistant',
-      text: '¡Hola! Soy el Asistente de IA de Site Solutions. Estoy listo para ayudarte con consultas técnicas de infraestructura, inventario y cotizaciones comerciales. ¿Qué equipo o SKU deseas consultar?',
+      text: 'Hola, soy el asistente de IA de SITE Solutions. Puedo ayudarte a consultar el catalogo de equipos, verificar existencias y armar cotizaciones. Que producto o SKU deseas consultar?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -1682,96 +1682,110 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           {(() => {
             const getButtonClass = (id: string) => {
               const isActive = activeQuickAccess === id;
-              const baseClass = "w-full text-left px-4 py-3 rounded-xl text-xs transition-all active:scale-[0.98] shadow-sm flex items-center justify-between border";
+              const baseClass = "w-full text-left px-3 py-2 rounded-lg text-[11px] transition-all active:scale-[0.98] shadow-sm flex items-center justify-between border";
               
               if (isActive) {
                 return `${baseClass} bg-cyan-950/45 border-cyan-500/45 text-cyan-400 font-bold ring-1 ring-cyan-500/20 shadow-md shadow-cyan-950/30`;
               } else {
-                return `${baseClass} bg-slate-900/60 hover:bg-slate-800 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 font-semibold`;
+                return `${baseClass} bg-slate-900/60 hover:bg-slate-800 border-slate-850 hover:border-slate-700 text-slate-300 hover:text-slate-100 font-semibold`;
               }
             };
 
             return (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('cotizaciones');
-                    setQuotingState({
-                      step: 'waiting_client_name',
-                      selectedProducts: []
-                    });
+              <div className="space-y-3.5">
+                <div className="space-y-1.5">
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Ventas</span>
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('cotizaciones');
+                        setQuotingState({
+                          step: 'waiting_client_name',
+                          selectedProducts: []
+                        });
+                        
+                        const initMessage: ChatMessage = {
+                          id: 'm-' + Math.random().toString(36).substr(2, 9),
+                          sender: 'assistant',
+                          text: 'Iniciando Asistente de Cotización. Por favor, escribe el nombre del cliente para comenzar.',
+                          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                        setMessages(prev => [...prev, initMessage]);
+                      }}
+                      className={getButtonClass('cotizaciones')}
+                    >
+                      <span>Cotizaciones</span>
+                      <span className={`w-2 h-2 rounded-full ${activeQuickAccess === 'cotizaciones' ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-cyan-500 animate-pulse'}`} />
+                    </button>
                     
-                    const initMessage: ChatMessage = {
-                      id: 'm-' + Math.random().toString(36).substr(2, 9),
-                      sender: 'assistant',
-                      text: 'Iniciando Asistente de Cotización. Por favor, escribe el nombre del cliente para comenzar.',
-                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    };
-                    setMessages(prev => [...prev, initMessage]);
-                  }}
-                  className={getButtonClass('cotizaciones')}
-                >
-                  <span>Cotizaciones</span>
-                  <span className={`w-2 h-2 rounded-full ${activeQuickAccess === 'cotizaciones' ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-cyan-500 animate-pulse'}`} />
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('ficha_tecnica');
-                    setInputText('Ficha técnica del equipo NovaByte NB-A14X');
-                  }}
-                  className={getButtonClass('ficha_tecnica')}
-                >
-                  <span>Ficha tecnica</span>
-                  {activeQuickAccess === 'ficha_tecnica' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('compatibilidad');
-                    setInputText('¿Es la memoria RAM Quantum Line QL-DDR5-32 compatible con la placa TechCore TC-Z790?');
-                  }}
-                  className={getButtonClass('compatibilidad')}
-                >
-                  <span>Compatibilidad</span>
-                  {activeQuickAccess === 'compatibilidad' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('garantias');
-                    setInputText('¿Cuál es la garantía y cobertura para el procesador Ferrotech FT-i9X-12C?');
-                  }}
-                  className={getButtonClass('garantias')}
-                >
-                  <span>Garantias</span>
-                  {activeQuickAccess === 'garantias' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('manuales');
-                    setInputText('¿Dónde encuentro el manual de usuario o guía de la laptop Vertex Systems VX-Pro15?');
-                  }}
-                  className={getButtonClass('manuales')}
-                >
-                  <span>Manuales</span>
-                  {activeQuickAccess === 'manuales' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveQuickAccess('precios');
-                    setInputText('Precio de la laptop NovaByte NB-A14X');
-                  }}
-                  className={getButtonClass('precios')}
-                >
-                  <span>Precios</span>
-                  {activeQuickAccess === 'precios' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
-                </button>
-              </>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('precios');
+                        setInputText('Precio de la laptop NovaByte NB-A14X');
+                      }}
+                      className={getButtonClass('precios')}
+                    >
+                      <span>Precios</span>
+                      {activeQuickAccess === 'precios' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Soporte</span>
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('garantias');
+                        setInputText('¿Cuál es la garantía y cobertura para el procesador Ferrotech FT-i9X-12C?');
+                      }}
+                      className={getButtonClass('garantias')}
+                    >
+                      <span>Garantias</span>
+                      {activeQuickAccess === 'garantias' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('manuales');
+                        setInputText('¿Dónde encuentro el manual de usuario o guía de la laptop Vertex Systems VX-Pro15?');
+                      }}
+                      className={getButtonClass('manuales')}
+                    >
+                      <span>Manuales</span>
+                      {activeQuickAccess === 'manuales' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('ficha_tecnica');
+                        setInputText('Ficha técnica del equipo NovaByte NB-A14X');
+                      }}
+                      className={getButtonClass('ficha_tecnica')}
+                    >
+                      <span>Ficha tecnica</span>
+                      {activeQuickAccess === 'ficha_tecnica' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveQuickAccess('compatibilidad');
+                        setInputText('¿Es la memoria RAM Quantum Line QL-DDR5-32 compatible con la placa TechCore TC-Z690?');
+                      }}
+                      className={getButtonClass('compatibilidad')}
+                    >
+                      <span>Compatibilidad</span>
+                      {activeQuickAccess === 'compatibilidad' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 animate-in zoom-in duration-200" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
             );
           })()}
         </div>
@@ -1797,8 +1811,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
             </p>
           </div>
         </div>
-        <div className="text-xs px-3 py-1 bg-slate-800/80 rounded-full border border-slate-700 text-slate-300">
-          Respuestas revisadas por humanos
+        <div className="text-[10px] font-bold px-2.5 py-1 bg-emerald-950/20 border border-emerald-500/20 rounded-lg text-emerald-400">
+          Revisado por humanos
         </div>
       </div>
 
