@@ -34,7 +34,9 @@ import {
   CheckCircle2, 
   Users,
   AlertCircle,
-  LogOut
+  LogOut,
+  Terminal,
+  Network
 } from 'lucide-react';
 
 export default function Home() {
@@ -549,17 +551,25 @@ export default function Home() {
             <div className="h-6 w-px bg-slate-800" />
 
             <div className="flex items-center gap-2.5">
-              {user.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full border border-slate-800 bg-slate-900"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-xs font-bold text-white uppercase">
-                  {user.email?.charAt(0)}
-                </div>
-              )}
+              <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shadow-lg transition-all duration-300 ${
+                currentRole === 'admin' 
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
+                  : currentRole === 'tecnico'
+                  ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                  : currentRole === 'soporte'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                  : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+              }`}>
+                {currentRole === 'admin' ? (
+                  <Terminal className="w-4 h-4 animate-pulse" />
+                ) : currentRole === 'tecnico' ? (
+                  <Cpu className="w-4 h-4" />
+                ) : currentRole === 'soporte' ? (
+                  <Wrench className="w-4 h-4" />
+                ) : (
+                  <Briefcase className="w-4 h-4" />
+                )}
+              </div>
               
               <div className="hidden lg:block text-left">
                 <span className="text-xs font-semibold text-slate-200 block max-w-[120px] truncate leading-tight">
