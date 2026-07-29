@@ -728,22 +728,11 @@ export default function Home() {
 
       </main>
 
-      {/* Footer */}
       <footer className="mt-auto bg-slate-950 border-t border-slate-900 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center items-center">
           <p className="text-xs text-slate-500">
-            © 2026 Site Solutions Inc. • Portal interno de consulta de infraestructura.
+            © 2026 SITE Computer Solutions • Asistente interno de catálogo y ventas.
           </p>
-          <div className="flex gap-4 text-xs text-slate-500 font-medium">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-cyan-500" />
-              Ingesta Limpia
-            </span>
-            <span>•</span>
-            <span>Auditoría de IA</span>
-            <span>•</span>
-            <span>Control de Calidad</span>
-          </div>
         </div>
       </footer>
 
