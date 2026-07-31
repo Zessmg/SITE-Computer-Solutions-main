@@ -1619,21 +1619,23 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
     if (action === 'approve') {
       try {
         const clientName = msg.metadata.clientName || 'Cliente General';
+        const products = msg.metadata.products || [];
+        const total = msg.metadata.total || 0;
         // Registrar en base de datos la cotización multi-producto
         await insertHistoryRecord({
           date: new Date().toISOString().split('T')[0],
           client: clientName,
-          query: `Cotización Multi-producto (${msg.metadata.products.length} ítems)`,
-          response: `Resumen de cotización total de $${msg.metadata.total.toLocaleString('es-MX')} MXN.`,
+          query: `Cotización Multi-producto (${products.length} ítems)`,
+          response: `Resumen de cotización total de $${total.toLocaleString('es-MX')} MXN.`,
           status: 'Pendiente',
           metadata: {
             sku: 'MULTI',
-            name: `Cotización: ${msg.metadata.products.map((p: any) => p.sku).join(', ')}`,
-            price: msg.metadata.total,
+            name: `Cotización: ${products.map((p: any) => p.sku).join(', ')}`,
+            price: total,
             stock: 0,
             warehouse: 'Varios Almacenes',
             isMultiProduct: true,
-            products: msg.metadata.products,
+            products: products,
             user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
           }
         });
@@ -1661,12 +1663,12 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       setQuotingState({
         step: 'adding_products',
         clientName: msg.metadata.clientName,
-        selectedProducts: msg.metadata.products
+        selectedProducts: msg.metadata.products || []
       });
       const editMsg: ChatMessage = {
         id: 'm-' + Math.random().toString(36).substr(2, 9),
         sender: 'assistant',
-        text: `Modo de edición activado. Llevas **${msg.metadata.products.length} productos** en la lista. Puedes escribir otro SKU para agregarlo, o presionar **'Finalizar Cotización'** cuando termines.`,
+        text: `Modo de edición activado. Llevas **${(msg.metadata.products || []).length} productos** en la lista. Puedes escribir otro SKU para agregarlo, o presionar **'Finalizar Cotización'** cuando termines.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, editMsg]);
@@ -1844,7 +1846,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                     </div>
                     
                     <div className="space-y-1.5 py-1 text-slate-300">
-                      {msg.metadata.products.map((p: any, idx: number) => {
+                      {(msg.metadata.products || []).map((p: any, idx: number) => {
                         const qty = p.quantity || 1;
                         const label = qty > 1 ? `${qty}x ${p.name}` : p.name;
                         const dotsCount = Math.max(4, 30 - label.length);
