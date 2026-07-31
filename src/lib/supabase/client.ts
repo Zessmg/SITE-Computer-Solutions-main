@@ -47,6 +47,7 @@ export interface ChatMessage {
     status?: string;
     vigencia?: string;
     moneda?: string;
+    user_email?: string;
   };
 }
 

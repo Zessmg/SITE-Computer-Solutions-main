@@ -1403,8 +1403,8 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
           warehouse: warehouseText,
           specs: specsText,
           solution: solutionText,
-          manual_url: (isPriceQuery || isStockQuery) ? null : manualUrl,
-          manual_name: (isPriceQuery || isStockQuery) ? null : manualName,
+          manual_url: (isPriceQuery || isStockQuery) ? undefined : manualUrl,
+          manual_name: (isPriceQuery || isStockQuery) ? undefined : manualName,
           hideQuoteButton: !isQuoteRequest,
           user_email: currentUser?.email || `${currentRole}@sitesolutions.com`
         };
