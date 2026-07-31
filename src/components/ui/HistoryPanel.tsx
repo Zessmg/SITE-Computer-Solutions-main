@@ -585,7 +585,7 @@ export default function HistoryPanel({ currentUser }: HistoryPanelProps) {
                         <div className="flex flex-col items-center gap-1">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold border shadow-inner tracking-wide ${pillColor}`}>
                             <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dotColor}`} />
-                            {record.status === 'Pendiente' ? 'Pendiente' : record.status === 'Editando' ? 'Editada' : record.status}
+                            {record.status}
                           </span>
                           {record.metadata?.approvedBy && (
                             <span className="text-[8px] text-slate-500 font-mono block leading-none font-bold" title={`Decisión por: ${record.metadata.approvedBy}`}>
