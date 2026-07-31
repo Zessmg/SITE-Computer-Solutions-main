@@ -5,7 +5,35 @@
 
 ---
 
-## 📋 1. Marco de Trabajo Scrum (Historias de Usuario)
+## 🌐 1. Arquitectura y Ecosistema de Sistemas (Overview)
+
+El proyecto está diseñado bajo una arquitectura web moderna y desacoplada (Jamstack), apoyada por herramientas de desarrollo ágil e integración continua. A continuación se detallan los sistemas clave utilizados, su propósito y cómo interactúan entre sí:
+
+| Sistema | ¿Para qué sirve? | Rol en este Proyecto | ¿Cómo se conecta? |
+| :--- | :--- | :--- | :--- |
+| **Next.js** | Framework web React de producción. | Soporte de la interfaz del catálogo, paneles de usuario y procesamiento local del chatbot. | Ejecuta la lógica del cliente y realiza peticiones asíncronas hacia Supabase. |
+| **Supabase** | Backend como Servicio (BaaS) basado en PostgreSQL. | Base de datos principal para persistir productos, registros de auditoría y almacenamiento de PDF técnicos. | Se conecta a Next.js por HTTPS usando el cliente oficial de JS SDK con credenciales de API. |
+| **GitHub** | Plataforma de alojamiento de código y control de versiones. | Repositorio centralizado para almacenar y asegurar el código fuente (`SITE-Computer-Solutions-main`). | Se conecta localmente mediante Git por SSH/HTTPS y con Vercel por Webhooks automáticos. |
+| **Vercel** | Plataforma de nube para despliegue y hospedaje web. | Hospeda la aplicación web, compila el código en producción y expone el sitio bajo HTTPS seguro. | Se activa automáticamente ante cada `git push` a la rama `main` en GitHub, realizando el build. |
+| **Antigravity** | Asistente de Inteligencia Artificial (IA) de desarrollo. | Co-programador para diseñar la lógica, corregir la compatibilidad, resolver errores de tipos y documentar. | Integrado directamente en el entorno de desarrollo como agente autónomo de codificación. |
+
+### 🔄 Diagrama de Conectividad y Flujo de Trabajo
+
+El flujo de información y desarrollo sigue un camino lineal e integrado para asegurar la calidad y la automatización:
+
+```mermaid
+graph TD
+    AG[Antigravity IDE] -- Escribe y corrige código --> Dev[Espacio Local Dev]
+    Dev -- git push --> GH[(GitHub Repository)]
+    GH -- Webhook automático --> VC[Vercel Cloud Build]
+    VC -- Compilación estricta y hosting --> App[Aplicación Web Activa]
+    App -- Consultas / Escritura SQL --> SB[(Supabase Database)]
+    SB -- Retorna Productos e Historial --> App
+```
+
+---
+
+## 📋 2. Marco de Trabajo Scrum (Historias de Usuario)
 
 El proyecto se estructuró en **Sprints de Desarrollo Diario** para lograr un Producto Mínimo Viable (MVP) completamente funcional en una semana, seguido de fases estrictas de Aseguramiento de Calidad (QA) y Despliegue.
 
@@ -104,7 +132,7 @@ gantt
 
 ---
 
-## 🛠️ 2. Guía Técnica Paso a Paso: Implementación desde Cero
+## 🛠️ 3. Guía Técnica Paso a Paso: Implementación desde Cero
 
 A continuación se describe el desarrollo e integración de los componentes del sistema.
 
