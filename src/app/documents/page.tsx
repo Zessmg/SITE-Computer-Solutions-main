@@ -103,7 +103,7 @@ const getMockValue = (key: string, category: string, brand: string, sku: string)
   return 'N/A';
 };
 
-export default function DocumentViewer() {
+function DocumentViewerContent() {
   const searchParams = useSearchParams();
   const fileName = searchParams.get('file') || 'Ficha_Tecnica_General.pdf';
   const [product, setProduct] = useState<any>(null);
@@ -497,5 +497,18 @@ export default function DocumentViewer() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DocumentViewer() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-cyan-600 animate-bounce mb-3" />
+        <span className="text-sm text-slate-400 font-mono">Cargando documento...</span>
+      </div>
+    }>
+      <DocumentViewerContent />
+    </React.Suspense>
   );
 }
