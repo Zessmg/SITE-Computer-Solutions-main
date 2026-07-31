@@ -1583,7 +1583,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       await insertHistoryRecord({
         date: new Date().toISOString().split('T')[0],
         client: clientName,
-        query: `Cotización de SKU: ${msg.metadata.sku} (${msg.metadata.name})`,
+        query: `Cotización de SKU: ${msg.metadata.sku || ''} (${msg.metadata.name || ''})`,
         response: msg.text,
         status: 'Pendiente',
         metadata: {
@@ -1654,7 +1654,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       const cancelMsg: ChatMessage = {
         id: 'm-' + Math.random().toString(36).substr(2, 9),
         sender: 'assistant',
-        text: `Cotización para **${msg.metadata.clientName}** cancelada y descartada.`,
+        text: `Cotización para **${msg.metadata.clientName || 'Cliente'}** cancelada y descartada.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, cancelMsg]);
@@ -1662,7 +1662,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
       // Activar modo edición en el wizard
       setQuotingState({
         step: 'adding_products',
-        clientName: msg.metadata.clientName,
+        clientName: msg.metadata.clientName || '',
         selectedProducts: msg.metadata.products || []
       });
       const editMsg: ChatMessage = {
@@ -1842,7 +1842,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                   {/* Contenedor central - igual a la captura del mockup */}
                   <div className="bg-slate-950/70 border border-slate-850 p-4 rounded-xl space-y-3.5 font-mono text-xs">
                     <div className="border-b border-slate-900 pb-2 text-slate-400">
-                      Cliente: <strong className="text-slate-200">{msg.metadata.clientName}</strong> | Consulta: Cotización
+                      Cliente: <strong className="text-slate-200">{msg.metadata.clientName || 'Cliente'}</strong> | Consulta: Cotización
                     </div>
                     
                     <div className="space-y-1.5 py-1 text-slate-300">
@@ -1863,7 +1863,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                     
                     <div className="border-t border-slate-900 pt-3 flex justify-between font-bold text-sm text-slate-200">
                       <span>TOTAL:</span>
-                      <span>${msg.metadata.total.toLocaleString('es-MX')} MXN</span>
+                      <span>${(msg.metadata.total || 0).toLocaleString('es-MX')} MXN</span>
                     </div>
                   </div>
                   
@@ -1879,7 +1879,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                       </span>
                     ) : (
                       <span className="px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[10px] font-bold text-rose-400 flex items-center gap-1">
-                        Compatibilidad: {msg.metadata.compatibility}
+                        Compatibilidad: {msg.metadata.compatibility || 'No especificada'}
                       </span>
                     )}
                     
@@ -1912,7 +1912,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                     </div>
                   ) : (
                     <div className="text-center py-2 text-xs font-bold text-slate-400 italic">
-                      Estado: Cotización {msg.metadata.status}
+                      Estado: Cotización {msg.metadata.status || ''}
                     </div>
                   )}
                 </div>
@@ -1944,19 +1944,19 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">SKU</span>
-                      <strong className="text-slate-200 font-mono">{msg.metadata.sku}</strong>
+                      <strong className="text-slate-200 font-mono">{msg.metadata.sku || ''}</strong>
                     </div>
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">Precio Lista</span>
-                      <strong className="text-cyan-400">${msg.metadata.price?.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN</strong>
+                      <strong className="text-cyan-400">${(msg.metadata.price || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN</strong>
                     </div>
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">Disponibilidad</span>
-                      <strong className="text-emerald-400">{msg.metadata.stock} unidades</strong>
+                      <strong className="text-emerald-400">{msg.metadata.stock || 0} unidades</strong>
                     </div>
                     <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                       <span className="text-slate-400 block mb-0.5">Almacén</span>
-                      <strong className="text-slate-200 truncate block">{msg.metadata.warehouse}</strong>
+                      <strong className="text-slate-200 truncate block">{msg.metadata.warehouse || ''}</strong>
                     </div>
                   </div>
 
