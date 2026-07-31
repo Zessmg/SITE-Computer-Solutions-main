@@ -1576,7 +1576,7 @@ export default function ChatInterface({ currentRole, currentUser }: ChatInterfac
   const handleApprove = async (msg: ChatMessage) => {
     if (!msg.metadata) return;
     const sku = msg.metadata.sku;
-    if (quotedSkus.includes(sku)) return; // Evitar clicks duplicados
+    if (!sku || quotedSkus.includes(sku)) return; // Evitar clicks duplicados
     
     try {
       const clientName = currentRole === 'vendedor' ? 'Cliente Externo (Ventas)' : 'Equipo TI Interno';
