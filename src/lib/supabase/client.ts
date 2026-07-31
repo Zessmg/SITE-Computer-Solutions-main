@@ -38,6 +38,13 @@ export interface ChatMessage {
     manual_url?: string;
     manual_name?: string;
     hideQuoteButton?: boolean;
+    clientName?: string;
+    total?: number;
+    products?: any[];
+    isQuotationCard?: boolean;
+    isMultiProductQuote?: boolean;
+    compatibility?: string;
+    status?: string;
   };
 }
 
