@@ -219,7 +219,7 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Ítems Cotizados</span>
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                      {products.map((p, idx) => (
+                      {products.map((p: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-center text-xs py-0.5">
                           <span className="text-slate-300 font-semibold truncate max-w-[200px]" title={p.name}>
                             {p.quantity || 1}x {p.name}
