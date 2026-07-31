@@ -1754,7 +1754,7 @@ export async function fetchProducts(categoryFilter?: string, searchFilter?: stri
     try {
       const { data, error } = await supabase.from('products').select('*');
       if (!error && data && data.length > 0) {
-        const dbProducts = data.map(item => ({
+        const dbProducts = data.map((item: any) => ({
           ...item,
           specs: item.specs || { warranty_months: 36 }
         }));
@@ -1762,7 +1762,7 @@ export async function fetchProducts(categoryFilter?: string, searchFilter?: stri
         // Combinar datos de Supabase y semillas locales (evitando duplicados por SKU)
         const merged = [...dbProducts];
         SEED_PRODUCTS.forEach(sp => {
-          if (!merged.some(dp => dp.sku === sp.sku)) {
+          if (!merged.some((dp: any) => dp.sku === sp.sku)) {
             merged.push(sp);
           }
         });
@@ -1781,11 +1781,11 @@ export async function fetchProducts(categoryFilter?: string, searchFilter?: stri
   let filtered = [...products];
   
   if (categoryFilter && categoryFilter !== 'Todos') {
-    filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
+    filtered = filtered.filter((p: any) => p.category.toLowerCase() === categoryFilter.toLowerCase());
   }
   if (searchFilter) {
     const term = searchFilter.toLowerCase();
-    filtered = filtered.filter(p => 
+    filtered = filtered.filter((p: any) => 
       p.name.toLowerCase().includes(term) || 
       p.sku.toLowerCase().includes(term) ||
       (p.description && p.description.toLowerCase().includes(term))
@@ -1915,7 +1915,7 @@ export async function fetchUsersList(searchQuery: string = ''): Promise<any[]> {
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    list = list.filter(u => 
+    list = list.filter((u: any) => 
       u.name.toLowerCase().includes(q) || 
       u.email.toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q)
