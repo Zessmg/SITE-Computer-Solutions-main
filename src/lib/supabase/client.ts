@@ -45,6 +45,8 @@ export interface ChatMessage {
     isMultiProductQuote?: boolean;
     compatibility?: string;
     status?: string;
+    vigencia?: string;
+    moneda?: string;
   };
 }
 
