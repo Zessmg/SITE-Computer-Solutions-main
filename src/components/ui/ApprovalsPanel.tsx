@@ -39,7 +39,7 @@ export default function ApprovalsPanel({ currentUser }: ApprovalsPanelProps) {
     const id = (q.id || '').toLowerCase();
     
     const products = getProductsList(q);
-    const hasMatchingProduct = products.some(p => 
+    const hasMatchingProduct = products.some((p: any) => 
       (p.name || '').toLowerCase().includes(term) || 
       (p.sku || '').toLowerCase().includes(term)
     );
